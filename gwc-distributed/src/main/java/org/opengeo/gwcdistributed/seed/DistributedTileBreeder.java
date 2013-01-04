@@ -1,0 +1,279 @@
+package org.opengeo.gwcdistributed.seed;
+
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.geowebcache.GeoWebCacheException;
+import org.geowebcache.layer.TileLayer;
+import org.geowebcache.layer.TileLayerDispatcher;
+import org.geowebcache.seed.GWCTask;
+import org.geowebcache.seed.GWCTask.TYPE;
+import org.geowebcache.seed.Job;
+import org.geowebcache.seed.JobStatus;
+import org.geowebcache.seed.SeedRequest;
+import org.geowebcache.seed.SeederThreadPoolExecutor;
+import org.geowebcache.seed.TaskStatus;
+import org.geowebcache.seed.TileBreeder;
+import org.geowebcache.storage.StorageBroker;
+import org.geowebcache.storage.TileRange;
+import org.geowebcache.util.GWCVars;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.BeanInitializationException;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+
+import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.IdGenerator;
+
+public class DistributedTileBreeder extends TileBreeder implements ApplicationContextAware {
+
+	public DistributedTileBreeder(HazelcastInstance hz) {
+		super();
+		this.hz = hz;
+		this.currentTaskId = hz.getIdGenerator("taskIdGenerator");
+		this.currentJobId = hz.getIdGenerator("jobIdGenerator");
+	}
+
+	private final HazelcastInstance hz;
+    private static final String GWC_SEED_ABORT_LIMIT = "GWC_SEED_ABORT_LIMIT";
+
+    private static final String GWC_SEED_RETRY_WAIT = "GWC_SEED_RETRY_WAIT";
+
+    private static final String GWC_SEED_RETRY_COUNT = "GWC_SEED_RETRY_COUNT";
+
+    private static Log log = LogFactory.getLog(DistributedTileBreeder.class);
+
+
+    /**
+     * How many retries per failed tile. 0 = don't retry, 1 = retry once if failed, etc
+     */
+    private int tileFailureRetryCount = 0;
+
+    /**
+     * How much (in milliseconds) to wait before trying again a failed tile
+     */
+    private long tileFailureRetryWaitTime = 100;
+
+    /**
+     * How many failures to tolerate before aborting the seed task. Value is shared between all the
+     * threads of the same run.
+     */
+    private long totalFailuresBeforeAborting = 1000;
+
+    private Map<Long, SubmittedTask> currentPool = new TreeMap<Long, SubmittedTask>();
+
+    private final IdGenerator currentTaskId;
+    private final IdGenerator currentJobId;
+    
+    private Collection<DistributedJob> jobs;
+
+    //private final ReadWriteLock lock = new ReentrantReadWriteLock();
+
+    private static class SubmittedTask {
+        public final GWCTask task;
+
+        public final Future<GWCTask> future;
+
+        public SubmittedTask(final GWCTask task, final Future<GWCTask> future) {
+            this.task = task;
+            this.future = future;
+        }
+    }
+    
+    
+    /**
+     * Initializes the seed task failure control variables either with the provided environment
+     * variable values or their defaults.
+     * 
+     * @see {@link ThreadedTileBreeder class' javadocs} for more information
+     * @see org.springframework.context.ApplicationContextAware#setApplicationContext(org.springframework.context.ApplicationContext)
+     */
+    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+        String retryCount = GWCVars.findEnvVar(applicationContext, GWC_SEED_RETRY_COUNT);
+        String retryWait = GWCVars.findEnvVar(applicationContext, GWC_SEED_RETRY_WAIT);
+        String abortLimit = GWCVars.findEnvVar(applicationContext, GWC_SEED_ABORT_LIMIT);
+
+        tileFailureRetryCount = (int) toLong(GWC_SEED_RETRY_COUNT, retryCount, 0);
+        tileFailureRetryWaitTime = toLong(GWC_SEED_RETRY_WAIT, retryWait, 100);
+        totalFailuresBeforeAborting = toLong(GWC_SEED_ABORT_LIMIT, abortLimit, 1000);
+
+        checkPositive(tileFailureRetryCount, GWC_SEED_RETRY_COUNT);
+        checkPositive(tileFailureRetryWaitTime, GWC_SEED_RETRY_WAIT);
+        checkPositive(totalFailuresBeforeAborting, GWC_SEED_ABORT_LIMIT);
+    }
+    @SuppressWarnings("serial")
+    private void checkPositive(long value, String variable) {
+        if (value < 0) {
+            throw new BeanInitializationException(
+                    "Invalid configuration value for environment variable " + variable
+                            + ". It should be a positive integer.") {
+            };
+        }
+    }
+    private long toLong(String varName, String paramVal, long defaultVal) {
+        if (paramVal == null) {
+            return defaultVal;
+        }
+        try {
+            return Long.valueOf(paramVal);
+        } catch (NumberFormatException e) {
+            log.warn("Invalid environment parameter for " + varName + ": '" + paramVal
+                    + "'. Using default value: " + defaultVal);
+        }
+        return defaultVal;
+    }
+
+	@Override
+	public void seed(String layerName, SeedRequest sr)
+			throws GeoWebCacheException {
+
+        TileLayer tl = findTileLayer(layerName);
+
+        TileRange tr = createTileRange(sr, tl);
+
+        Job job = createJob(tr, tl, sr.getType(), sr.getThreadCount(),
+                sr.getFilterUpdate());
+
+        dispatchJob(job);
+	}
+
+	@Override
+	public Job createJob(TileRange tr, TYPE type, int threadCount,
+			boolean filterUpdate) throws GeoWebCacheException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Job createJob(TileRange tr, TileLayer tl, TYPE type,
+			int threadCount, boolean filterUpdate) throws GeoWebCacheException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public void dispatchJob(Job job) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public long[][] getStatusList() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public long[][] getStatusList(String layerName) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Collection<JobStatus> getJobStatusList() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Collection<JobStatus> getJobStatusList(String layerName) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Collection<TaskStatus> getTaskStatusList() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Collection<TaskStatus> getTaskStatusList(String layerName) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public void setTileLayerDispatcher(TileLayerDispatcher tileLayerDispatcher) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void setThreadPoolExecutor(SeederThreadPoolExecutor stpe) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void setStorageBroker(StorageBroker sb) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public StorageBroker getStorageBroker() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public TileLayer findTileLayer(String layerName)
+			throws GeoWebCacheException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Iterator<GWCTask> getRunningTasks() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Iterator<GWCTask> getRunningAndPendingTasks() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Iterator<GWCTask> getPendingTasks() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public boolean terminateGWCTask(long id) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public Iterable<TileLayer> getLayers() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	protected long getNextTaskId() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	/**
+	 * Get the HazelCast instance for the node this Breeder is running on. 
+	 * @return
+	 */
+	public HazelcastInstance getHz() {
+		return hz;
+	}
+	
+	
+
+}
