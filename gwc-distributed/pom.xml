@@ -23,6 +23,18 @@
 	    <artifactId>gwc-core</artifactId>
 	    <version>1.4-SNAPSHOT</version>
 	  </dependency>
+  	  <dependency>
+        <groupId>javax.servlet</groupId>
+        <artifactId>servlet-api</artifactId>
+        <version>2.4</version>
+        <scope>provided</scope>
+      </dependency>
+      <dependency>
+        <groupId>log4j</groupId>
+        <artifactId>log4j</artifactId>
+        <version>1.2.14</version>
+      </dependency>
+      
 
 		<!-- Testing -->
 	  <dependency>

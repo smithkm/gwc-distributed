@@ -47,30 +47,14 @@ public class DistributedTruncateJobTest extends AbstractJobTest {
 	    
 	    return job;
 	}
-
+	
 	@Override
-	public void testGetStateDone() throws Exception {
-	    // Only single task case needs to be tested 
-	}
-
-	@Override
-	public void testGetStateReady() throws Exception {
-	    // Only single task case needs to be tested 
-	}
-
-	@Override
-	public void testGetStateRunning() throws Exception {
-	    // Only single task case needs to be tested 
-	}
-
-	@Override
-	public void testGetStateDead() throws Exception {
-	    // Only single task case needs to be tested 
-	}
-
-	@Override
-	public void testGetStateUnset() throws Exception {
-	    // Only single task case needs to be tested 
+	protected void assertGetState(STATE expected, STATE... states) {
+	    if(states.length<=1){
+	        super.assertGetState(expected, states);
+	    } else {
+	        // Don't test as this job can never have more than one task.
+	    }
 	}
 
 }
