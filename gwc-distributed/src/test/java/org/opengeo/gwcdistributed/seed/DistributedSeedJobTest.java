@@ -6,21 +6,21 @@ import org.geowebcache.layer.TileLayer;
 import org.geowebcache.seed.AbstractJobTest;
 import org.geowebcache.seed.GWCTask.STATE;
 import org.geowebcache.seed.Job;
-import org.geowebcache.seed.TruncateTask;
+import org.geowebcache.seed.SeedTask;
 import org.geowebcache.storage.TileRangeIterator;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
+import org.junit.Test;
 
 import com.hazelcast.config.Config;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 
 import static org.easymock.classextension.EasyMock.*;
+import static org.junit.Assert.*;
 import static org.junit.Assume.*;
 
-public class DistributedTruncateJobTest extends AbstractJobTest {
-	
+public class DistributedSeedJobTest extends AbstractJobTest {
 	HazelcastInstance hz;
 	Config config;
 
@@ -38,7 +38,7 @@ public class DistributedTruncateJobTest extends AbstractJobTest {
 	@Override
 	protected Job initNextLocation(TileRangeIterator tri) throws Exception {
 	    final DistributedTileBreeder breeder = createMock(DistributedTileBreeder.class);
-	    final TruncateTask task = createMockTruncateTask(breeder);
+	    final SeedTask task = createMockSeedTask(breeder);
 	    replay(task);
 	    replay(breeder);
 	    
@@ -54,23 +54,25 @@ public class DistributedTruncateJobTest extends AbstractJobTest {
 
 	@Override
 	protected Job jobWithTaskStates(STATE... states) throws Exception {
-		assumeTrue(states.length==1); // Tests with multiple tasks don't make sense for Truncate jobs.
-		
         hz = Hazelcast.newHazelcastInstance(config);
-	    final DistributedTileBreeder breeder = createMock(DistributedTileBreeder.class);
-	    final TruncateTask task = createMockTruncateTask(breeder);
-	    expect(task.getState()).andReturn(states[0]).anyTimes();
-	    expect(breeder.getHz()).andStubReturn(hz);
-	    replay(task);
+
+        final DistributedTileBreeder breeder = createMock(DistributedTileBreeder.class);
+
+        for(STATE state: states){
+		    final SeedTask task = createMockSeedTask(breeder);
+		    expect(task.getState()).andStubReturn(state);
+		    expect(breeder.getHz()).andStubReturn(hz);
+		    replay(task);
+	    }
 	    replay(breeder);
-	    
+
 	    TileLayer tl = createMock(TileLayer.class);
 	    replay(tl);
 	    TileRangeIterator tri = createMock(TileRangeIterator.class);
 	    replay(tri);
-	    
-	    DistributedTruncateJob job = new DistributedTruncateJob(1, breeder, tl, tri, false);
+		DistributedSeedJob job = new DistributedSeedJob(1, breeder, tl, states.length, tri, false);
 	    
 	    return job;
 	}
+
 }

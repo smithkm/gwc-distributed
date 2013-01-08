@@ -57,7 +57,8 @@ public abstract class DistributedJob implements Job {
         this.tri = tri;
         this.tl = tl;
         this.doFilterUpdate = doFilterUpdate;
-        this.activeThreads = breeder.getHz().getAtomicNumber(getKey("activeThreadCount"));
+        com.hazelcast.core.HazelcastInstance hz = breeder.getHz();
+        this.activeThreads = hz.getAtomicNumber(getKey("activeThreadCount"));
     }
 
     /**
