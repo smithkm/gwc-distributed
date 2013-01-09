@@ -1,6 +1,7 @@
 package org.opengeo.gwcdistributed.seed;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.TreeMap;
@@ -17,6 +18,7 @@ import org.geowebcache.seed.GWCTask;
 import org.geowebcache.seed.GWCTask.STATE;
 import org.geowebcache.seed.GWCTask.TYPE;
 import org.geowebcache.seed.Job;
+import org.geowebcache.seed.JobNotFoundException;
 import org.geowebcache.seed.JobStatus;
 import org.geowebcache.seed.SeedJob;
 import org.geowebcache.seed.SeedRequest;
@@ -28,6 +30,7 @@ import org.geowebcache.seed.TruncateJob;
 import org.geowebcache.seed.TruncateTask;
 import org.geowebcache.storage.StorageBroker;
 import org.geowebcache.storage.TileRange;
+import org.geowebcache.storage.TileRangeIterator;
 import org.geowebcache.util.GWCVars;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanInitializationException;
@@ -44,6 +47,7 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 		this.hz = hz;
 		this.currentTaskId = hz.getIdGenerator("taskIdGenerator");
 		this.currentJobId = hz.getIdGenerator("jobIdGenerator");
+		this.jobs = new HashMap<Long, DistributedJob>();
 	}
 
 	private final HazelcastInstance hz;
@@ -54,7 +58,6 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
     private static final String GWC_SEED_RETRY_COUNT = "GWC_SEED_RETRY_COUNT";
 
     private static Log log = LogFactory.getLog(DistributedTileBreeder.class);
-
 
     /**
      * How many retries per failed tile. 0 = don't retry, 1 = retry once if failed, etc
@@ -77,7 +80,7 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
     private final IdGenerator currentTaskId;
     private final IdGenerator currentJobId;
     
-    private Collection<DistributedJob> jobs;
+    private Map<Long, DistributedJob> jobs;
 
     //private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -147,13 +150,6 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
                 sr.getFilterUpdate());
 
         dispatchJob(job);
-	}
-
-	@Override
-	public Job createJob(TileRange tr, TYPE type, int threadCount,
-			boolean filterUpdate) throws GeoWebCacheException {
-		// TODO Auto-generated method stub
-		return null;
 	}
 
 	@Override
@@ -295,6 +291,17 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 	@Override
 	protected TruncateTask createTruncateTask(TruncateJob job) {
 		return super.createTruncateTask(job);
+	}
+
+	@Override
+	public SeedJob createSeedJob(int threadCount, boolean reseed,
+			TileRangeIterator trIter, TileLayer tl, boolean filterUpdate) {
+		return new DistributedSeedJob(currentJobId.newId(), this, tl, threadCount, trIter, filterUpdate);
+	}
+	@Override
+	public TruncateJob createTruncateJob(TileRangeIterator trIter,
+			TileLayer tl, boolean filterUpdate) {
+		return new DistributedTruncateJob(currentJobId.newId(), this, tl, trIter, filterUpdate);
 	}
 	
 	

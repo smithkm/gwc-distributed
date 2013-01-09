@@ -1,7 +1,11 @@
 package org.opengeo.gwcdistributed.seed;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ExecutionException;
 
 import org.geowebcache.layer.TileLayer;
 import org.geowebcache.seed.GWCTask;
@@ -16,6 +20,9 @@ import org.geowebcache.storage.TileRangeIterator;
 import org.springframework.util.Assert;
 
 import com.hazelcast.core.AtomicNumber;
+import com.hazelcast.core.Hazelcast;
+import com.hazelcast.core.Member;
+import com.hazelcast.core.MultiTask;
 
 public abstract class DistributedJob implements Job {
 
@@ -31,7 +38,7 @@ public abstract class DistributedJob implements Job {
     
     private final boolean doFilterUpdate;
     
-    protected GWCTask[] threads;
+    transient protected GWCTask[] threads;
   
     /**
      * 
@@ -84,6 +91,27 @@ public abstract class DistributedJob implements Job {
 
 	public GWCTask[] getTasks() {
 		return threads;
+	}
+	
+	/**
+	 * Get the status of each task in the job, across the cluster.
+	 * @return
+	 * @throws ExecutionException
+	 * @throws InterruptedException
+	 */
+	public Collection<TaskStatus> getClusterTasksStatus() throws ExecutionException, InterruptedException {
+		final Set<Member> members = breeder.getHz().getCluster().getMembers();
+		final MultiTask<Collection<TaskStatus>> mtask = new MultiTask<Collection<TaskStatus>>(new GetTaskStatus(this.getId()), members);
+		breeder.getHz().getExecutorService().submit(mtask);
+		Collection<Collection<TaskStatus>> statusTree = mtask.get();
+		
+		// Flatten into single collection
+		List<TaskStatus> result = new ArrayList<TaskStatus>((int)(statusTree.size()*this.getThreadCount()));
+		for(Collection<TaskStatus> statusForNode: mtask.get()) {
+			result.addAll(statusForNode);
+		}
+		
+		return result;
 	}
 
 	public void terminate() {
