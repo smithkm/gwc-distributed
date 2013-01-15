@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -16,6 +17,7 @@ import org.geowebcache.seed.GWCTask.STATE;
 import org.geowebcache.seed.Job;
 import org.geowebcache.seed.JobNotFoundException;
 import org.geowebcache.seed.JobStatus;
+import org.geowebcache.seed.JobUtils;
 import org.geowebcache.seed.TaskStatus;
 import org.geowebcache.seed.TileBreeder;
 import org.geowebcache.seed.TileRequest;
@@ -167,9 +169,26 @@ public abstract class DistributedJob implements Job, Serializable {
         return new JobStatus(taskStatuses, System.currentTimeMillis(), this.id);
     }
 
+    class StateIterator implements Iterator<GWCTask.STATE> {
+    	
+    	Iterator<TaskStatus> it = getStatus().getTaskStatuses().iterator();
+    	
+		public boolean hasNext() {
+			return it.hasNext();
+		}
+
+		public STATE next() {
+			return it.next().getState();
+		}
+
+		public void remove() {
+			throw new UnsupportedOperationException();
+		}
+    	
+    }
+    
 	public STATE getState() {
-		// TODO Auto-generated method stub
-		return null;
+		return JobUtils.combineState(new StateIterator());
 	}
 	
 	/**

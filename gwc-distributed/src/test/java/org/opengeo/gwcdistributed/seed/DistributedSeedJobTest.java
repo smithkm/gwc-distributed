@@ -5,6 +5,7 @@ import org.geowebcache.seed.AbstractJobTest;
 import org.geowebcache.seed.GWCTask.STATE;
 import org.geowebcache.seed.Job;
 import org.geowebcache.seed.SeedTask;
+import org.geowebcache.seed.TaskStatus;
 import org.geowebcache.seed.TileBreeder;
 import org.geowebcache.storage.TileRangeIterator;
 
@@ -53,7 +54,7 @@ public class DistributedSeedJobTest extends AbstractJobTest {
 	    TileLayer tl = createMock(TileLayer.class);
 	    replay(tl);
 	    
-	    DistributedTruncateJob job = new DistributedTruncateJob(1, breeder, tl, tri, false);
+	    DistributedSeedJob job = new DistributedSeedJob(1, breeder, tl, 1, tri, false);
 	    
 	    job.threads[0] = task;
 
@@ -68,6 +69,8 @@ public class DistributedSeedJobTest extends AbstractJobTest {
         for(STATE state: states){
 		    final SeedTask task = createMockSeedTask(breeder);
 		    expect(task.getState()).andStubReturn(state);
+		    TaskStatus status = new TaskStatus(0, 0, 0, 0, 0, state);
+		    expect(task.getStatus()).andStubReturn(status);
 		    replay(task);
 	    }
 	    replay(breeder);
