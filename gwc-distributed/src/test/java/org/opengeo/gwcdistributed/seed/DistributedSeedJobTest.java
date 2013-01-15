@@ -36,8 +36,6 @@ public class DistributedSeedJobTest extends AbstractJobTest {
 
 	@Before
     public void setUp() {
-		reset(breeder);
-		expect(breeder.getHz()).andStubReturn(hzInstance);
     }
 	
 	@After
@@ -47,7 +45,7 @@ public class DistributedSeedJobTest extends AbstractJobTest {
 
 	@Override
 	protected Job initNextLocation(TileRangeIterator tri) throws Exception {
-	    final DistributedTileBreeder breeder = createMock(DistributedTileBreeder.class);
+		final DistributedTileBreeder breeder = (DistributedTileBreeder) createMockTileBreeder();
 	    final SeedTask task = createMockSeedTask(breeder);
 	    replay(task);
 	    replay(breeder);
@@ -85,6 +83,8 @@ public class DistributedSeedJobTest extends AbstractJobTest {
 
 	@Override
 	protected TileBreeder createMockTileBreeder() {
+		reset(breeder);
+		expect(breeder.getHz()).andStubReturn(hzInstance);
 	    return breeder;
 	}
 
