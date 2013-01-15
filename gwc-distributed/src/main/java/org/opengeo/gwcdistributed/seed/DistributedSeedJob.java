@@ -13,8 +13,10 @@ public class DistributedSeedJob extends DistributedJob implements SeedJob{
 			TileLayer tl, int threadCount, TileRangeIterator tri,
 			boolean doFilterUpdate) {
 		super(id, breeder, tl, threadCount, tri, doFilterUpdate);
-		// TODO Auto-generated constructor stub
 		threads = new GWCTask[threadCount];
+		for(int i=0; i<threadCount; i++){
+			threads[i]=breeder.createSeedTask(this);
+		}
 	}
 
 	public void failure(GWCTask task, TileRequest request, Exception e)
