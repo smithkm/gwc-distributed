@@ -6,6 +6,7 @@ import org.geowebcache.layer.TileLayer;
 import org.geowebcache.seed.AbstractJobTest;
 import org.geowebcache.seed.GWCTask.STATE;
 import org.geowebcache.seed.Job;
+import org.geowebcache.seed.TileBreeder;
 import org.geowebcache.seed.TruncateTask;
 import org.geowebcache.storage.TileRangeIterator;
 import org.junit.After;
@@ -72,5 +73,16 @@ public class DistributedTruncateJobTest extends AbstractJobTest {
 	    DistributedTruncateJob job = new DistributedTruncateJob(1, breeder, tl, tri, false);
 	    
 	    return job;
+	}
+
+	@Override
+	protected TileBreeder createMockTileBreeder() {
+		return createMock(DistributedTileBreeder.class);
+	}
+
+	@Override
+	protected Job createTestSeedJob(TileBreeder breeder, int threads) {
+		assumeTrue(false);
+		return null;
 	}
 }

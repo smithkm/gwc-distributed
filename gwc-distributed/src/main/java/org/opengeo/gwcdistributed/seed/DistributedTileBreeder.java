@@ -47,7 +47,6 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 		this.hz = hz;
 		this.currentTaskId = hz.getIdGenerator("taskIdGenerator");
 		this.currentJobId = hz.getIdGenerator("jobIdGenerator");
-		this.jobs = new HashMap<Long, DistributedJob>();
 	}
 
 	private final HazelcastInstance hz;
@@ -79,8 +78,6 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 
     private final IdGenerator currentTaskId;
     private final IdGenerator currentJobId;
-    
-    private Map<Long, DistributedJob> jobs;
 
     //private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -303,7 +300,5 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 			TileLayer tl, boolean filterUpdate) {
 		return new DistributedTruncateJob(currentJobId.newId(), this, tl, trIter, filterUpdate);
 	}
-	
-	
 
 }

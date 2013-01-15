@@ -1,18 +1,23 @@
 package org.opengeo.gwcdistributed.seed;
 
-import static org.junit.Assert.*;
-
 import org.geowebcache.layer.TileLayer;
 import org.geowebcache.seed.AbstractJobTest;
 import org.geowebcache.seed.GWCTask.STATE;
 import org.geowebcache.seed.Job;
 import org.geowebcache.seed.SeedTask;
+import org.geowebcache.seed.TileBreeder;
 import org.geowebcache.storage.TileRangeIterator;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
-import com.hazelcast.config.Config;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 
@@ -20,14 +25,19 @@ import static org.easymock.classextension.EasyMock.*;
 import static org.junit.Assert.*;
 import static org.junit.Assume.*;
 
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration("distributedSeedJobTest-context.xml")
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 public class DistributedSeedJobTest extends AbstractJobTest {
-	HazelcastInstance hz;
-	Config config;
+	@Autowired
+	HazelcastInstance hzInstance;
+	@Autowired
+	DistributedTileBreeder breeder;
 
 	@Before
     public void setUp() {
-		if(config==null)
-			config = new Config();
+		reset(breeder);
+		expect(breeder.getHz()).andStubReturn(hzInstance);
     }
 	
 	@After
@@ -54,14 +64,12 @@ public class DistributedSeedJobTest extends AbstractJobTest {
 
 	@Override
 	protected Job jobWithTaskStates(STATE... states) throws Exception {
-        hz = Hazelcast.newHazelcastInstance(config);
 
-        final DistributedTileBreeder breeder = createMock(DistributedTileBreeder.class);
+        final DistributedTileBreeder breeder = (DistributedTileBreeder) createMockTileBreeder();
 
         for(STATE state: states){
 		    final SeedTask task = createMockSeedTask(breeder);
 		    expect(task.getState()).andStubReturn(state);
-		    expect(breeder.getHz()).andStubReturn(hz);
 		    replay(task);
 	    }
 	    replay(breeder);
@@ -73,6 +81,20 @@ public class DistributedSeedJobTest extends AbstractJobTest {
 		DistributedSeedJob job = new DistributedSeedJob(1, breeder, tl, states.length, tri, false);
 	    
 	    return job;
+	}
+
+	@Override
+	protected TileBreeder createMockTileBreeder() {
+	    return breeder;
+	}
+
+	@Override
+	protected Job createTestSeedJob(TileBreeder breeder, int threads) {
+        TileLayer tl = createMock(TileLayer.class);
+        replay(tl);
+        TileRangeIterator tri = createMock(TileRangeIterator.class);
+        replay(tri);
+        return new DistributedSeedJob(1l, (DistributedTileBreeder) breeder, tl, threads, tri, false);
 	}
 
 }

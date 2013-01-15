@@ -1,5 +1,6 @@
 package org.opengeo.gwcdistributed.seed;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -7,27 +8,34 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.geowebcache.layer.TileLayer;
 import org.geowebcache.seed.GWCTask;
 import org.geowebcache.seed.GWCTask.STATE;
 import org.geowebcache.seed.Job;
+import org.geowebcache.seed.JobNotFoundException;
 import org.geowebcache.seed.JobStatus;
 import org.geowebcache.seed.TaskStatus;
 import org.geowebcache.seed.TileBreeder;
 import org.geowebcache.seed.TileRequest;
+import org.geowebcache.seed.threaded.ThreadedTileBreeder;
 import org.geowebcache.storage.TileRange;
 import org.geowebcache.storage.TileRangeIterator;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.Assert;
 
 import com.hazelcast.core.AtomicNumber;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.Member;
 import com.hazelcast.core.MultiTask;
+import com.hazelcast.spring.context.SpringAware;
 
-public abstract class DistributedJob implements Job {
+@SpringAware
+public abstract class DistributedJob implements Job, Serializable {
 
     final private AtomicNumber activeThreads;
-    final protected DistributedTileBreeder breeder;
+    transient protected DistributedTileBreeder breeder;
     final protected int threadCount;
     final protected long id;
     final protected TileRangeIterator tri;
@@ -39,7 +47,9 @@ public abstract class DistributedJob implements Job {
     private final boolean doFilterUpdate;
     
     transient protected GWCTask[] threads;
-  
+    
+    public static Log log = LogFactory.getLog(ThreadedTileBreeder.class);
+
     /**
      * 
      * @param id unique ID of the Job
@@ -100,6 +110,7 @@ public abstract class DistributedJob implements Job {
 	 * @throws InterruptedException
 	 */
 	public Collection<TaskStatus> getClusterTasksStatus() throws ExecutionException, InterruptedException {
+    	assertInitialized();
 		final Set<Member> members = breeder.getHz().getCluster().getMembers();
 		final MultiTask<Collection<TaskStatus>> mtask = new MultiTask<Collection<TaskStatus>>(new GetTaskStatus(this.getId()), members);
 		breeder.getHz().getExecutorService().submit(mtask);
@@ -135,6 +146,7 @@ public abstract class DistributedJob implements Job {
 	}
 
 	public TileBreeder getBreeder() {
+    	assertInitialized();
 		return breeder;
 	}
 
@@ -147,6 +159,7 @@ public abstract class DistributedJob implements Job {
 	}
 
     public JobStatus getStatus() {
+    	assertInitialized();
         Collection<TaskStatus> taskStatuses = new ArrayList<TaskStatus>(threads.length);
         for(GWCTask task: threads) {
             taskStatuses.add(task.getStatus());
@@ -167,4 +180,27 @@ public abstract class DistributedJob implements Job {
         Assert.isTrue(task.getJob()==this, "Task does not belong to this Job");
     }
 
+    /**
+     * Check that transient fields have been initialized after being deserialized.
+     */
+    protected void assertInitialized() {
+    	Assert.state(this.breeder!=null || this.threads!=null, "Local state was not correctly set after being deserialized.");
+    }
+    
+    /**
+     * Property setter for Spring, should only be called once.
+     * @param breeder
+     */
+    @Autowired
+    public void setBreeder(final DistributedTileBreeder breeder) {
+    	Assert.state(this.breeder==null, "Breeder should only be set once by Spring");
+    	Assert.notNull(breeder);
+    	this.breeder = breeder;
+    	try{
+    		this.threads = ((DistributedJob)breeder.getJobByID(this.id)).threads;
+    	} catch (JobNotFoundException ex) {
+    		log.info("Job not initialized with existing local tasks as it is not in the local job list.");
+    	}
+    }
+    
 }
