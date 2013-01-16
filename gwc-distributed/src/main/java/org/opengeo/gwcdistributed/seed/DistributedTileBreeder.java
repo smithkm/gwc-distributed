@@ -4,8 +4,10 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -42,6 +44,8 @@ import com.hazelcast.core.ISet;
 import com.hazelcast.core.IdGenerator;
 import com.hazelcast.core.ItemEvent;
 import com.hazelcast.core.ItemListener;
+import com.hazelcast.core.Member;
+import com.hazelcast.core.MultiTask;
 
 public class DistributedTileBreeder extends TileBreeder implements ApplicationContextAware {
 
@@ -51,7 +55,7 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 		this.currentTaskId = hz.getIdGenerator("taskIdGenerator");
 		this.currentJobId = hz.getIdGenerator("jobIdGenerator");
 		this.jobCloud = hz.getSet("jobCloud");
-		jobCloud.addItemListener(new Listener(), true);
+		jobCloud.addItemListener(new JobAddedListener(), true);
 	}
 	
 	private final ISet<DistributedJob> jobCloud;
@@ -102,13 +106,13 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
     /**
      * Callback for new jobs being added to the cluster
      */
-	private class Listener implements ItemListener<DistributedJob> {
+	private class JobAddedListener implements ItemListener<DistributedJob> {
 
 		
 		public void itemAdded(ItemEvent<DistributedJob> item) {
-			System.out.printf("Job detected, creating local tasks on node %s\n", hz.getName());
 			DistributedJob j = item.getItem();
-			dispatchJob(j);
+			log.info(String.format("Job %d added to cluster, adding to breeder on node %s\n",j.getId(), hz.getName()));
+			jobs.put(j.getId(), j);
 		}
 
 		public void itemRemoved(ItemEvent<DistributedJob> item) {
@@ -176,24 +180,30 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 	}
 
 	@Override
-	public Job createJob(TileRange tr, TileLayer tl, TYPE type,
-			int threadCount, boolean filterUpdate) throws GeoWebCacheException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
 	public void dispatchJob(Job job) {
-		// TODO
+		log.info(String.format("Dispatching Job %d to cluster.  Originating with node %s;", job.getId(), hz.getName()));
+		final Set<Member> members = getHz().getCluster().getMembers();
+		final MultiTask<Object> mtask = new MultiTask<Object>(new DoDispatch(job.getId()), members);
+		getHz().getExecutorService().submit(mtask);
+		try {
+			mtask.get();
+		} catch (ExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	void localDispatchJob(Job job) {
+		log.debug(String.format("Dispatching Job %d on node %s", job.getId(), hz.getName()));
 		for(GWCTask task: job.getTasks()){
 			try {
+				log.trace(String.format("Starting task %d for job %d on node %s", task.getTaskId(), job.getId(), hz.getName()));
 				task.doAction();
-			} catch (GeoWebCacheException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			} catch (Exception e) {
+				log.error(String.format("Exception dispatching Job %d Task %d on node %s \n", job.getId(), task.getTaskId(), hz.getName()));
 			}
 		}
 	}
@@ -232,12 +242,6 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 	public Collection<TaskStatus> getTaskStatusList(String layerName) {
 		// TODO Auto-generated method stub
 		return null;
-	}
-
-	@Override
-	public void setTileLayerDispatcher(TileLayerDispatcher tileLayerDispatcher) {
-		// TODO Auto-generated method stub
-
 	}
 
 	@Override
@@ -330,6 +334,7 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 	public SeedJob createSeedJob(int threadCount, boolean reseed,
 			TileRangeIterator trIter, TileLayer tl, boolean filterUpdate) {
 		DistributedSeedJob job = new DistributedSeedJob(currentJobId.newId(), this, tl, threadCount, trIter, filterUpdate);
+		log.trace(String.format("Seed Job %d created on node %s, adding to cluster.",job.getId(), hz.getName()));
 		jobCloud.add(job);
 		return job;
 	}
@@ -337,6 +342,7 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 	public TruncateJob createTruncateJob(TileRangeIterator trIter,
 			TileLayer tl, boolean filterUpdate) {
 		DistributedTruncateJob job = new DistributedTruncateJob(currentJobId.newId(), this, tl, trIter, filterUpdate);
+		log.trace(String.format("Truncate Job %d created on node %s, adding to cluster.",job.getId(), hz.getName()));
 		jobCloud.add(job);
 		return job;
 	}

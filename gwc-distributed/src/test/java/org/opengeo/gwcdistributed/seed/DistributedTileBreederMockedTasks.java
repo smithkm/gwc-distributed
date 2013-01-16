@@ -9,6 +9,8 @@ import org.geowebcache.seed.TruncateTask;
 
 import com.hazelcast.core.HazelcastInstance;
 
+import static org.easymock.classextension.EasyMock.*;
+
 /**
  * DistributedTileBreeder with its task factory methods overridden to use 
  * iterators.
@@ -27,12 +29,18 @@ public class DistributedTileBreederMockedTasks extends DistributedTileBreeder {
 	
 	@Override
 	protected SeedTask createSeedTask(SeedJob job) {
-		return seedIt.next();
+		SeedTask task = seedIt.next();
+		expect(task.getJob()).andStubReturn(job);
+		replay(task);
+		return task;
 	}
 
 	@Override
 	protected TruncateTask createTruncateTask(TruncateJob job) {
-		return truncIt.next();
+		TruncateTask task = truncIt.next();
+		expect(task.getJob()).andStubReturn(job);
+		replay(task);
+		return task;
 	}
 
 	

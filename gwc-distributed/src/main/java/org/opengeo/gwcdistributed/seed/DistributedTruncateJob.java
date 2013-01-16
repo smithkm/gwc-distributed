@@ -12,10 +12,14 @@ public class DistributedTruncateJob extends DistributedJob implements TruncateJo
 			TileLayer tl, TileRangeIterator tri,
 			boolean doFilterUpdate) {
 		super(id, breeder, tl, 1, tri, doFilterUpdate);
+	}
+
+	protected void createTasks(){
+		// FIXME truncate should actually only happen once per cluster 
         threads = new GWCTask[1];
         threads[0] = breeder.createTruncateTask(this);
 	}
-
+	
 	public void runSynchronously() throws GeoWebCacheException,
 			InterruptedException {
 		threads[0].doAction();

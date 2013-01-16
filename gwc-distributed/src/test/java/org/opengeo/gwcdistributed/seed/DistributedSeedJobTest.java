@@ -1,10 +1,13 @@
 package org.opengeo.gwcdistributed.seed;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.geowebcache.layer.TileLayer;
 import org.geowebcache.seed.AbstractJobTest;
 import org.geowebcache.seed.GWCTask.STATE;
 import org.geowebcache.seed.Job;
 import org.geowebcache.seed.SeedTask;
+import org.geowebcache.seed.SeedTestUtils;
 import org.geowebcache.seed.TaskStatus;
 import org.geowebcache.seed.TileBreeder;
 import org.geowebcache.storage.TileRangeIterator;
@@ -47,7 +50,7 @@ public class DistributedSeedJobTest extends AbstractJobTest {
 	@Override
 	protected Job initNextLocation(TileRangeIterator tri) throws Exception {
 		final DistributedTileBreeder breeder = (DistributedTileBreeder) createMockTileBreeder();
-	    final SeedTask task = createMockSeedTask(breeder);
+	    final SeedTask task = SeedTestUtils.createMockSeedTask(breeder);
 	    replay(task);
 	    replay(breeder);
 	    
@@ -67,7 +70,7 @@ public class DistributedSeedJobTest extends AbstractJobTest {
         final DistributedTileBreeder breeder = (DistributedTileBreeder) createMockTileBreeder();
 
         for(STATE state: states){
-		    final SeedTask task = createMockSeedTask(breeder);
+		    final SeedTask task = SeedTestUtils.createMockSeedTask(breeder);
 		    expect(task.getState()).andStubReturn(state);
 		    TaskStatus status = new TaskStatus(0, 0, 0, 0, 0, state);
 		    expect(task.getStatus()).andStubReturn(status);
@@ -99,5 +102,4 @@ public class DistributedSeedJobTest extends AbstractJobTest {
         replay(tri);
         return new DistributedSeedJob(1l, (DistributedTileBreeder) breeder, tl, threads, tri, false);
 	}
-
 }

@@ -6,6 +6,7 @@ import org.geowebcache.layer.TileLayer;
 import org.geowebcache.seed.AbstractJobTest;
 import org.geowebcache.seed.GWCTask.STATE;
 import org.geowebcache.seed.Job;
+import org.geowebcache.seed.SeedTestUtils;
 import org.geowebcache.seed.TileBreeder;
 import org.geowebcache.seed.TruncateTask;
 import org.geowebcache.storage.TileRangeIterator;
@@ -39,7 +40,7 @@ public class DistributedTruncateJobTest extends AbstractJobTest {
 	@Override
 	protected Job initNextLocation(TileRangeIterator tri) throws Exception {
 	    final DistributedTileBreeder breeder = createMock(DistributedTileBreeder.class);
-	    final TruncateTask task = createMockTruncateTask(breeder);
+	    final TruncateTask task = SeedTestUtils.createMockTruncateTask(breeder);
 	    replay(task);
 	    replay(breeder);
 	    
@@ -59,7 +60,7 @@ public class DistributedTruncateJobTest extends AbstractJobTest {
 		
         hz = Hazelcast.newHazelcastInstance(config);
 	    final DistributedTileBreeder breeder = createMock(DistributedTileBreeder.class);
-	    final TruncateTask task = createMockTruncateTask(breeder);
+	    final TruncateTask task = SeedTestUtils.createMockTruncateTask(breeder);
 	    expect(task.getState()).andReturn(states[0]).anyTimes();
 	    expect(breeder.getHz()).andStubReturn(hz);
 	    replay(task);

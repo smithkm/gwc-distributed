@@ -54,7 +54,7 @@ public abstract class DistributedJob implements Job, Serializable {
     transient protected DistributedTileBreeder breeder;
 
     
-    public static Log log = LogFactory.getLog(ThreadedTileBreeder.class);
+    public static Log log = LogFactory.getLog(DistributedJob.class);
 
     /**
      * 
@@ -83,8 +83,15 @@ public abstract class DistributedJob implements Job, Serializable {
         this.doFilterUpdate = doFilterUpdate;
         com.hazelcast.core.HazelcastInstance hz = breeder.getHz();
         this.activeThreads = hz.getAtomicNumber(getKey("activeThreadCount"));
+        
+        createTasks();
     }
 
+    /**
+     * Create the tasks for this job.
+     */
+    protected abstract void createTasks();
+    
     /**
      * Get a key unique to this Job but shared by all instances of it across the cluster.
      * @param baseKey 
@@ -224,8 +231,15 @@ public abstract class DistributedJob implements Job, Serializable {
     	this.breeder = breeder;
     	
     	// Set up other transient fields from breeder.
-    	this.threads = ((DistributedJob)breeder.getJobByID(this.id)).threads;
     	this.tl = breeder.getTileLayerDispatcher().getTileLayer(layerName);
+    	try{
+    		this.threads = ((DistributedJob)breeder.getJobByID(this.id)).threads;
+    		log.info("Local job found, acquired local tasks.");
+    	} catch (JobNotFoundException ex) {
+    		log.info("Local job not found, creating new set of local tasks.");
+    		createTasks();
+    	}
+
     }
     
 }

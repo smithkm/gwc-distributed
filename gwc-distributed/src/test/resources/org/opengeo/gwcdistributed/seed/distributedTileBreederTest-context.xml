@@ -10,7 +10,11 @@
     <context:annotation-config />
 
     <hz:hazelcast id="hzInstance">
-     <hz:config></hz:config>
+     <hz:config>
+        <hz:properties>
+          <hz:property name="hazelcast.logging.type">log4j</hz:property>
+        </hz:properties>
+     </hz:config>
     </hz:hazelcast>
 
     <bean id="breeder" name="breeder" class="org.opengeo.gwcdistributed.seed.DistributedTileBreederMockedTasks">
