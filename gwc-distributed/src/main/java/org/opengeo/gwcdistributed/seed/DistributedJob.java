@@ -11,6 +11,7 @@ import java.util.concurrent.ExecutionException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.geowebcache.GeoWebCacheException;
 import org.geowebcache.layer.TileLayer;
 import org.geowebcache.seed.GWCTask;
 import org.geowebcache.seed.GWCTask.STATE;
@@ -37,18 +38,21 @@ import com.hazelcast.spring.context.SpringAware;
 public abstract class DistributedJob implements Job, Serializable {
 
     final private AtomicNumber activeThreads;
-    transient protected DistributedTileBreeder breeder;
     final protected int threadCount;
     final protected long id;
-    final protected TileRangeIterator tri;
-    final protected TileLayer tl;
+    final protected TileRange tr;
+    final protected String layerName;
     
     public static final long TIME_NOT_STARTED=-1;
     private long groupStartTime=TIME_NOT_STARTED;
     
     private final boolean doFilterUpdate;
     
+
+    transient protected TileLayer tl;
     transient protected GWCTask[] threads;
+    transient protected DistributedTileBreeder breeder;
+
     
     public static Log log = LogFactory.getLog(ThreadedTileBreeder.class);
 
@@ -73,8 +77,9 @@ public abstract class DistributedJob implements Job, Serializable {
         this.breeder = breeder;
         this.threadCount = threadCount;
         this.id = id;
-        this.tri = tri;
+        this.tr = tri.getTileRange(); // Don't need the iterator
         this.tl = tl;
+        this.layerName = tl.getName();
         this.doFilterUpdate = doFilterUpdate;
         com.hazelcast.core.HazelcastInstance hz = breeder.getHz();
         this.activeThreads = hz.getAtomicNumber(getKey("activeThreadCount"));
@@ -157,7 +162,7 @@ public abstract class DistributedJob implements Job, Serializable {
 	}
 
 	public TileRange getRange() {
-		return tri.getTileRange();
+		return tr;
 	}
 
     public JobStatus getStatus() {
@@ -209,17 +214,18 @@ public abstract class DistributedJob implements Job, Serializable {
     /**
      * Property setter for Spring, should only be called once.
      * @param breeder
+     * @throws GeoWebCacheException 
      */
     @Autowired
-    public void setBreeder(final DistributedTileBreeder breeder) {
+    public void setBreeder(final DistributedTileBreeder breeder) throws GeoWebCacheException {
     	Assert.state(this.breeder==null, "Breeder should only be set once by Spring");
     	Assert.notNull(breeder);
+    	
     	this.breeder = breeder;
-    	try{
-    		this.threads = ((DistributedJob)breeder.getJobByID(this.id)).threads;
-    	} catch (JobNotFoundException ex) {
-    		log.info("Job not initialized with existing local tasks as it is not in the local job list.");
-    	}
+    	
+    	// Set up other transient fields from breeder.
+    	this.threads = ((DistributedJob)breeder.getJobByID(this.id)).threads;
+    	this.tl = breeder.getTileLayerDispatcher().getTileLayer(layerName);
     }
     
 }

@@ -38,7 +38,10 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.ISet;
 import com.hazelcast.core.IdGenerator;
+import com.hazelcast.core.ItemEvent;
+import com.hazelcast.core.ItemListener;
 
 public class DistributedTileBreeder extends TileBreeder implements ApplicationContextAware {
 
@@ -47,7 +50,11 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 		this.hz = hz;
 		this.currentTaskId = hz.getIdGenerator("taskIdGenerator");
 		this.currentJobId = hz.getIdGenerator("jobIdGenerator");
+		this.jobCloud = hz.getSet("jobCloud");
+		jobCloud.addItemListener(new Listener(), true);
 	}
+	
+	private final ISet<DistributedJob> jobCloud;
 
 	private final HazelcastInstance hz;
     private static final String GWC_SEED_ABORT_LIMIT = "GWC_SEED_ABORT_LIMIT";
@@ -92,6 +99,25 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
         }
     }
     
+    /**
+     * Callback for new jobs being added to the cluster
+     */
+	private class Listener implements ItemListener<DistributedJob> {
+
+		
+		public void itemAdded(ItemEvent<DistributedJob> item) {
+			System.out.printf("Job detected, creating local tasks on node %s\n", hz.getName());
+			DistributedJob j = item.getItem();
+			dispatchJob(j);
+		}
+
+		public void itemRemoved(ItemEvent<DistributedJob> item) {
+			// TODO Auto-generated method stub
+			
+		}
+		
+	}
+
     
     /**
      * Initializes the seed task failure control variables either with the provided environment
@@ -158,8 +184,18 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 
 	@Override
 	public void dispatchJob(Job job) {
-		// TODO Auto-generated method stub
-
+		// TODO
+		for(GWCTask task: job.getTasks()){
+			try {
+				task.doAction();
+			} catch (GeoWebCacheException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 	}
 
 	@Override
@@ -293,12 +329,16 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 	@Override
 	public SeedJob createSeedJob(int threadCount, boolean reseed,
 			TileRangeIterator trIter, TileLayer tl, boolean filterUpdate) {
-		return new DistributedSeedJob(currentJobId.newId(), this, tl, threadCount, trIter, filterUpdate);
+		DistributedSeedJob job = new DistributedSeedJob(currentJobId.newId(), this, tl, threadCount, trIter, filterUpdate);
+		jobCloud.add(job);
+		return job;
 	}
 	@Override
 	public TruncateJob createTruncateJob(TileRangeIterator trIter,
 			TileLayer tl, boolean filterUpdate) {
-		return new DistributedTruncateJob(currentJobId.newId(), this, tl, trIter, filterUpdate);
+		DistributedTruncateJob job = new DistributedTruncateJob(currentJobId.newId(), this, tl, trIter, filterUpdate);
+		jobCloud.add(job);
+		return job;
 	}
 
 }
