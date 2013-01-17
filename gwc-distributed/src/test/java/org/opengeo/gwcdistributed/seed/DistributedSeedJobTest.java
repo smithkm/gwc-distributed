@@ -10,6 +10,7 @@ import org.geowebcache.seed.SeedTask;
 import org.geowebcache.seed.SeedTestUtils;
 import org.geowebcache.seed.TaskStatus;
 import org.geowebcache.seed.TileBreeder;
+import org.geowebcache.storage.TileRange;
 import org.geowebcache.storage.TileRangeIterator;
 
 import org.junit.After;
@@ -77,14 +78,8 @@ public class DistributedSeedJobTest extends AbstractJobTest {
 		    replay(task);
 	    }
 	    replay(breeder);
-
-	    TileLayer tl = createMock(TileLayer.class);
-	    replay(tl);
-	    TileRangeIterator tri = createMock(TileRangeIterator.class);
-	    replay(tri);
-		DistributedSeedJob job = new DistributedSeedJob(1, breeder, tl, states.length, tri, false);
 	    
-	    return job;
+	    return createTestSeedJob(breeder, states.length);
 	}
 
 	@Override
@@ -96,10 +91,14 @@ public class DistributedSeedJobTest extends AbstractJobTest {
 
 	@Override
 	protected Job createTestSeedJob(TileBreeder breeder, int threads) {
-        TileLayer tl = createMock(TileLayer.class);
-        replay(tl);
-        TileRangeIterator tri = createMock(TileRangeIterator.class);
-        replay(tri);
+	    TileLayer tl = createMock(TileLayer.class); {
+	    	expect(tl.getName()).andStubReturn("testLayer");
+	    } replay(tl);
+	    TileRange tr = createMock(TileRange.class);
+	    replay(tr);
+	    TileRangeIterator tri = createMock(TileRangeIterator.class);{
+	    	expect(tri.getTileRange()).andStubReturn(tr);
+	    } replay(tri);
         return new DistributedSeedJob(1l, (DistributedTileBreeder) breeder, tl, threads, tri, false);
 	}
 }
