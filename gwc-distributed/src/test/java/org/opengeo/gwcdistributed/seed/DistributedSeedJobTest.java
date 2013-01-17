@@ -2,6 +2,7 @@ package org.opengeo.gwcdistributed.seed;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.easymock.IAnswer;
 import org.geowebcache.layer.TileLayer;
 import org.geowebcache.seed.AbstractJobTest;
 import org.geowebcache.seed.GWCTask.STATE;
@@ -49,16 +50,25 @@ public class DistributedSeedJobTest extends AbstractJobTest {
     }
 
 	@Override
-	protected Job initNextLocation(TileRangeIterator tri) throws Exception {
+	protected Job initNextLocation(final TileRangeIterator tri) throws Exception {
 		final DistributedTileBreeder breeder = (DistributedTileBreeder) createMockTileBreeder();
 	    final SeedTask task = SeedTestUtils.createMockSeedTask(breeder);
 	    replay(task);
 	    replay(breeder);
 	    
-	    TileLayer tl = createMock(TileLayer.class);
-	    replay(tl);
+	    DistributedTileRangeIterator dtri = createMock(DistributedTileRangeIterator.class); {
+	    	expect(dtri.nextMetaGridLocation()).andStubAnswer(new IAnswer<long[]>(){
+
+				public long[] answer() throws Throwable {
+					return tri.nextMetaGridLocation();
+				}});
+	    } replay(dtri);
 	    
-	    DistributedSeedJob job = new DistributedSeedJob(1, breeder, tl, 1, tri, false);
+	    TileLayer tl = createMock(TileLayer.class); {
+	    	expect(tl.getName()).andStubReturn("testLayer");
+	    } replay(tl);
+	    
+	    DistributedSeedJob job = new DistributedSeedJob(1, breeder, tl, 1, dtri, false);
 	    
 	    job.threads[0] = task;
 
@@ -96,7 +106,7 @@ public class DistributedSeedJobTest extends AbstractJobTest {
 	    } replay(tl);
 	    TileRange tr = createMock(TileRange.class);
 	    replay(tr);
-	    TileRangeIterator tri = createMock(TileRangeIterator.class);{
+	    DistributedTileRangeIterator tri = createMock(DistributedTileRangeIterator.class);{
 	    	expect(tri.getTileRange()).andStubReturn(tr);
 	    } replay(tri);
         return new DistributedSeedJob(1l, (DistributedTileBreeder) breeder, tl, threads, tri, false);

@@ -18,6 +18,7 @@ import com.hazelcast.config.Config;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 
+import static org.easymock.EasyMock.expect;
 import static org.easymock.classextension.EasyMock.*;
 import static org.junit.Assume.*;
 
@@ -46,8 +47,12 @@ public class DistributedTruncateJobTest extends AbstractJobTest {
 	    
 	    TileLayer tl = createMock(TileLayer.class);
 	    replay(tl);
-	    
-	    DistributedTruncateJob job = new DistributedTruncateJob(1, breeder, tl, tri, false);
+
+	    DistributedTileRangeIterator dtri = createMock(DistributedTileRangeIterator.class);
+	    expect(dtri.nextMetaGridLocation()).andStubDelegateTo(tri);
+	    replay(dtri);
+
+	    DistributedTruncateJob job = new DistributedTruncateJob(1, breeder, tl, dtri, false);
 	    
 	    job.threads[0] = task;
 
@@ -68,7 +73,7 @@ public class DistributedTruncateJobTest extends AbstractJobTest {
 	    
 	    TileLayer tl = createMock(TileLayer.class);
 	    replay(tl);
-	    TileRangeIterator tri = createMock(TileRangeIterator.class);
+	    DistributedTileRangeIterator tri = createMock(DistributedTileRangeIterator.class);
 	    replay(tri);
 	    
 	    DistributedTruncateJob job = new DistributedTruncateJob(1, breeder, tl, tri, false);

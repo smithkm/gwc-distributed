@@ -9,7 +9,7 @@ import org.geowebcache.storage.TileRangeIterator;
 public class DistributedTruncateJob extends DistributedJob implements TruncateJob {
 
 	protected DistributedTruncateJob(long id, DistributedTileBreeder breeder,
-			TileLayer tl, TileRangeIterator tri,
+			TileLayer tl, DistributedTileRangeIterator tri,
 			boolean doFilterUpdate) {
 		super(id, breeder, tl, 1, tri, doFilterUpdate);
 	}

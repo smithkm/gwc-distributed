@@ -39,6 +39,7 @@ import org.springframework.beans.factory.BeanInitializationException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 
+import com.hazelcast.core.AtomicNumber;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ISet;
 import com.hazelcast.core.IdGenerator;
@@ -330,18 +331,26 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 		return super.createTruncateTask(job);
 	}
 
+	static final String ITERATOR_STEP_KEY = "iteratorStep";
+	
 	@Override
-	public SeedJob createSeedJob(int threadCount, boolean reseed,
+	protected SeedJob createSeedJob(int threadCount, boolean reseed,
 			TileRangeIterator trIter, TileLayer tl, boolean filterUpdate) {
-		DistributedSeedJob job = new DistributedSeedJob(currentJobId.newId(), this, tl, threadCount, trIter, filterUpdate);
+		final long id = currentJobId.newId();
+		final AtomicNumber step = hz.getAtomicNumber(DistributedJob.getKey(ITERATOR_STEP_KEY, id));
+		DistributedTileRangeIterator dTrIter = new DistributedTileRangeIterator(trIter, step);
+		DistributedSeedJob job = new DistributedSeedJob(id, this, tl, threadCount, dTrIter, filterUpdate);
 		log.trace(String.format("Seed Job %d created on node %s, adding to cluster.",job.getId(), hz.getName()));
 		jobCloud.add(job);
 		return job;
 	}
 	@Override
-	public TruncateJob createTruncateJob(TileRangeIterator trIter,
+	protected TruncateJob createTruncateJob(TileRangeIterator trIter,
 			TileLayer tl, boolean filterUpdate) {
-		DistributedTruncateJob job = new DistributedTruncateJob(currentJobId.newId(), this, tl, trIter, filterUpdate);
+		final long id = currentJobId.newId();
+		final AtomicNumber step = hz.getAtomicNumber(DistributedJob.getKey(ITERATOR_STEP_KEY, id));
+		DistributedTileRangeIterator dTrIter = new DistributedTileRangeIterator(trIter, step);
+		DistributedTruncateJob job = new DistributedTruncateJob(id, this, tl, dTrIter, filterUpdate);
 		log.trace(String.format("Truncate Job %d created on node %s, adding to cluster.",job.getId(), hz.getName()));
 		jobCloud.add(job);
 		return job;

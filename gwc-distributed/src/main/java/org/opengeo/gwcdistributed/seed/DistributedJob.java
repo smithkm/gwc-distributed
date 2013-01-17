@@ -40,7 +40,7 @@ public abstract class DistributedJob implements Job, Serializable {
     final private AtomicNumber activeThreads;
     final protected int threadCount;
     final protected long id;
-    final protected TileRange tr;
+    final protected DistributedTileRangeIterator trItr;
     final protected String layerName;
     
     public static final long TIME_NOT_STARTED=-1;
@@ -66,7 +66,7 @@ public abstract class DistributedJob implements Job, Serializable {
      * @param doFilterUpdate update relevant filters on the layer after the job completes
      */
     protected DistributedJob(long id, DistributedTileBreeder breeder, TileLayer tl, int threadCount, 
-            TileRangeIterator tri, boolean doFilterUpdate) {
+            DistributedTileRangeIterator tri, boolean doFilterUpdate) {
 
         Assert.notNull(breeder);
         Assert.notNull(tl);
@@ -77,7 +77,8 @@ public abstract class DistributedJob implements Job, Serializable {
         this.breeder = breeder;
         this.threadCount = threadCount;
         this.id = id;
-        this.tr = tri.getTileRange(); // Don't need the iterator
+        final AtomicNumber iteratorStep = breeder.getHz().getAtomicNumber(this.getKey("iteratorStep"));
+        this.trItr = tri;
         this.tl = tl;
         this.layerName = tl.getName();
         this.doFilterUpdate = doFilterUpdate;
@@ -98,19 +99,81 @@ public abstract class DistributedJob implements Job, Serializable {
      * @return A string incorporating the base key and the unique identifier for this job.
      */
     protected String getKey(String baseKey){
+    	return getKey(baseKey, id);
+    }
+    
+    static String getKey(String baseKey, long id){
     	if(baseKey!=null)
     		return String.format("job-%d-%s", id, baseKey);
     	else
-    		return String.format("job-%d", id);
+    		return String.format("job-%d", id);    	
     }
 	
 	public long getId() {
 		return id;
 	}
+	@SpringAware
+	static class DistributedTileRequest implements TileRequest, Serializable {
+		
+		final long[] gridLoc;
+		final long jobId;
+		long retryAt = 0;
+		long failures = 0;
+		
+		transient Job job;
+		
+		
 
+		public DistributedTileRequest(long[] gridLoc, Job job) {
+			super();
+			this.gridLoc = gridLoc;
+			this.job = job;
+			this.jobId = job.getId();
+		}
+
+		public long[] getGridLoc() {
+			return gridLoc;
+		}
+
+		public long getX() {
+			return gridLoc[0];
+		}
+
+		public long getY() {
+			return gridLoc[1];
+		}
+
+		public long getZoom() {
+			return gridLoc[2];
+		}
+
+		public long getRetryAt() {
+			return retryAt;
+		}
+
+		public long getFailures() {
+			return failures;
+		}
+
+		public Job getJob() {
+			return job;
+		}
+
+		public int compareTo(TileRequest o) {
+			return Long.signum(getRetryAt()-o.getRetryAt());
+		}
+		
+		@Autowired
+		public void setBreeder(DistributedTileBreeder breeder) throws GeoWebCacheException{
+			this.job = breeder.getJobByID(jobId);
+		}
+	}
+	
 	public TileRequest getNextLocation() throws InterruptedException {
-		// TODO Auto-generated method stub
-		return null;
+		long[] gridLoc = trItr.nextMetaGridLocation();
+		if(gridLoc==null) return null;
+		TileRequest tr = new DistributedTileRequest(gridLoc, this);
+		return tr;
 	}
 
 	public GWCTask[] getTasks() {
@@ -169,7 +232,7 @@ public abstract class DistributedJob implements Job, Serializable {
 	}
 
 	public TileRange getRange() {
-		return tr;
+		return trItr.getTileRange();
 	}
 
     public JobStatus getStatus() {

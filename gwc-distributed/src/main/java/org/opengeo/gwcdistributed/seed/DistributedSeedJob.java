@@ -10,7 +10,7 @@ import org.geowebcache.storage.TileRangeIterator;
 public class DistributedSeedJob extends DistributedJob implements SeedJob{
 
 	protected DistributedSeedJob(long id, DistributedTileBreeder breeder,
-			TileLayer tl, int threadCount, TileRangeIterator tri,
+			TileLayer tl, int threadCount, DistributedTileRangeIterator tri,
 			boolean doFilterUpdate) {
 		super(id, breeder, tl, threadCount, tri, doFilterUpdate);
 	}
