@@ -28,11 +28,14 @@ import org.geowebcache.storage.TileRangeIterator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.Assert;
 
+import com.google.common.base.Preconditions;
 import com.hazelcast.core.AtomicNumber;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.Member;
 import com.hazelcast.core.MultiTask;
 import com.hazelcast.spring.context.SpringAware;
+
+import static com.google.common.base.Preconditions.*;
 
 @SpringAware
 public abstract class DistributedJob implements Job, Serializable {
@@ -68,16 +71,15 @@ public abstract class DistributedJob implements Job, Serializable {
     protected DistributedJob(long id, DistributedTileBreeder breeder, TileLayer tl, int threadCount, 
             DistributedTileRangeIterator tri, boolean doFilterUpdate) {
 
-        Assert.notNull(breeder);
-        Assert.notNull(tl);
-        Assert.notNull(tri);
-        Assert.isTrue(threadCount>0,"threadCount must be positive");
-        Assert.isTrue(id>=0,"Job id must be non-negative");
+        checkNotNull(breeder);
+        checkNotNull(tl);
+        checkNotNull(tri);
+        checkArgument(threadCount>0,"threadCount must be positive");
+        checkArgument(id>=0,"Job id must be non-negative");
         
         this.breeder = breeder;
         this.threadCount = threadCount;
         this.id = id;
-        final AtomicNumber iteratorStep = breeder.getHz().getAtomicNumber(this.getKey("iteratorStep"));
         this.trItr = tri;
         this.tl = tl;
         this.layerName = tl.getName();
@@ -187,7 +189,7 @@ public abstract class DistributedJob implements Job, Serializable {
 	 * @throws InterruptedException
 	 */
 	public Collection<TaskStatus> getClusterTasksStatus() throws ExecutionException, InterruptedException {
-    	assertInitialized();
+    	checkInitialized();
 		final MultiTask<Collection<TaskStatus>> mtask = breeder.executeCallable(new GetTaskStatus(this));
 		Collection<Collection<TaskStatus>> statusTree = mtask.get();
 		
@@ -201,6 +203,7 @@ public abstract class DistributedJob implements Job, Serializable {
 	}
 
 	public void terminate() {
+		checkInitialized();
 		MultiTask<Object> mtask = breeder.executeCallable(new DoTerminate(this));
 		try {
 			mtask.get();
@@ -214,7 +217,7 @@ public abstract class DistributedJob implements Job, Serializable {
 	}
 	
 	void terminateLocal() {
-		assertInitialized();
+		checkInitialized();
         for(GWCTask task: threads){
             synchronized(task) {
                 if(task.getState()!=STATE.DEAD && task.getState()!=STATE.DONE){
@@ -225,26 +228,26 @@ public abstract class DistributedJob implements Job, Serializable {
 	}
 
 	public long getThreadCount() {
-		// TODO Auto-generated method stub
-		return 0;
+		return activeThreads.get();
 	}
 
 	public void threadStarted(GWCTask thread) {
-		// TODO Auto-generated method stub
-
+		checkMyTask(thread);
+		activeThreads.incrementAndGet();
 	}
 
 	public void threadStopped(GWCTask thread) {
-		// TODO Auto-generated method stub
-
+		checkMyTask(thread);
+		activeThreads.decrementAndGet();
 	}
 
 	public TileBreeder getBreeder() {
-    	assertInitialized();
+    	checkInitialized();
 		return breeder;
 	}
 
 	public TileLayer getLayer() {
+		checkInitialized();
 		return tl;
 	}
 
@@ -253,7 +256,7 @@ public abstract class DistributedJob implements Job, Serializable {
 	}
 
     public JobStatus getStatus() {
-    	assertInitialized();
+    	checkInitialized();
         Collection<TaskStatus> taskStatuses = new ArrayList<TaskStatus>(threads.length);
         for(GWCTask task: threads) {
             taskStatuses.add(task.getStatus());
@@ -287,15 +290,15 @@ public abstract class DistributedJob implements Job, Serializable {
 	 * Assert that a task belongs to this job
 	 * @param task
 	 */
-    protected void myTask(GWCTask task) {
-        Assert.isTrue(task.getJob()==this, "Task does not belong to this Job");
+    protected void checkMyTask(GWCTask task) {
+    	checkArgument(task.getJob()==this, "Task %s does not belong to Job %s", task.getTaskId(), this.getId());
     }
 
     /**
      * Check that transient fields have been initialized after being deserialized.
      */
-    protected void assertInitialized() {
-    	Assert.state(this.breeder!=null || this.threads!=null, "Local state was not correctly set after being deserialized.");
+    protected void checkInitialized() {
+    	checkState(this.breeder!=null && this.threads!=null, "Local state was not correctly set after being deserialized.");
     }
     
     /**
@@ -305,8 +308,8 @@ public abstract class DistributedJob implements Job, Serializable {
      */
     @Autowired
     public void setBreeder(final DistributedTileBreeder breeder) throws GeoWebCacheException {
-    	Assert.state(this.breeder==null, "Breeder should only be set once by Spring");
-    	Assert.notNull(breeder);
+    	checkState(this.breeder==null, "Breeder should only be set once by Spring");
+    	checkNotNull(breeder);
     	
     	this.breeder = breeder;
     	
