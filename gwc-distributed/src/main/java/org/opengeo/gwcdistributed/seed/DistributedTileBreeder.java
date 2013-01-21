@@ -183,9 +183,7 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 	@Override
 	public void dispatchJob(Job job) {
 		log.info(String.format("Dispatching Job %d to cluster.  Originating with node %s;", job.getId(), hz.getName()));
-		final Set<Member> members = getHz().getCluster().getMembers();
-		final MultiTask<Object> mtask = new MultiTask<Object>(new DoDispatch((DistributedJob)job), members);
-		getHz().getExecutorService().submit(mtask);
+		final MultiTask<Object> mtask = executeCallable(new DoDispatch((DistributedJob)job));
 		try {
 			mtask.get();
 		} catch (ExecutionException e) {
@@ -356,4 +354,25 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 		return job;
 	}
 
+	/**
+	 * Dispatch the given callable to each of the given member nodes
+	 * @param callable
+	 * @param members
+	 * @return
+	 */
+	<T> MultiTask<T> executeCallable(Callable<T> callable, Set<Member> members){
+		final MultiTask<T> mtask = new MultiTask<T>(callable, members);
+		getHz().getExecutorService().submit(mtask);
+		return mtask;
+	}
+	
+	/**
+	 * Dispatch the given callable to each node in teh cluster
+	 * @param callable
+	 * @return
+	 */
+	<T> MultiTask<T> executeCallable(Callable<T> callable){
+		final Set<Member> members = getHz().getCluster().getMembers();
+		return executeCallable(callable, members);
+	}
 }

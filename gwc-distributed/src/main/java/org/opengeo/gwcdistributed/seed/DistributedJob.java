@@ -188,9 +188,7 @@ public abstract class DistributedJob implements Job, Serializable {
 	 */
 	public Collection<TaskStatus> getClusterTasksStatus() throws ExecutionException, InterruptedException {
     	assertInitialized();
-		final Set<Member> members = breeder.getHz().getCluster().getMembers();
-		final MultiTask<Collection<TaskStatus>> mtask = new MultiTask<Collection<TaskStatus>>(new GetTaskStatus(this), members);
-		breeder.getHz().getExecutorService().submit(mtask);
+		final MultiTask<Collection<TaskStatus>> mtask = breeder.executeCallable(new GetTaskStatus(this));
 		Collection<Collection<TaskStatus>> statusTree = mtask.get();
 		
 		// Flatten into single collection
@@ -203,8 +201,27 @@ public abstract class DistributedJob implements Job, Serializable {
 	}
 
 	public void terminate() {
-		// TODO Auto-generated method stub
-
+		MultiTask<Object> mtask = breeder.executeCallable(new DoTerminate(this));
+		try {
+			mtask.get();
+		} catch (ExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	void terminateLocal() {
+		assertInitialized();
+        for(GWCTask task: threads){
+            synchronized(task) {
+                if(task.getState()!=STATE.DEAD && task.getState()!=STATE.DONE){
+                    task.terminateNicely();
+                }
+            }
+        }
 	}
 
 	public long getThreadCount() {

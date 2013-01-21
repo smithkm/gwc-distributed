@@ -13,6 +13,8 @@ import org.geowebcache.seed.TaskStatus;
 import org.geowebcache.seed.TileBreeder;
 import org.geowebcache.storage.TileRange;
 import org.geowebcache.storage.TileRangeIterator;
+import org.hamcrest.Matchers;
+import org.hamcrest.integration.EasyMock2Adapter;
 
 import org.junit.After;
 import org.junit.Before;
@@ -26,10 +28,13 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.MultiTask;
 
 import static org.easymock.classextension.EasyMock.*;
 import static org.junit.Assert.*;
 import static org.junit.Assume.*;
+import static org.hamcrest.Matchers.*;
+
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration("distributedSeedJobTest-context.xml")
@@ -75,6 +80,17 @@ public class DistributedSeedJobTest extends AbstractJobTest {
 	    return job;
 	}
 
+	/**
+	 * Expect a JobDistributedCallable
+	 * @param job job it should affect
+	 * @param clazz subclass of JobDistributedCallable it should be an instance of
+	 * @return
+	 */
+	static <T,U extends JobDistributedCallable<T>> JobDistributedCallable<T> jdcIs(Job job, Class<U> clazz){
+		EasyMock2Adapter.adapt(both(hasProperty("job", equalTo(job))).and(instanceOf(clazz)));
+		return null;
+	}
+	
 	@Override
 	protected Job jobWithTaskStates(STATE... states) throws Exception {
 
@@ -89,7 +105,23 @@ public class DistributedSeedJobTest extends AbstractJobTest {
 	    }
 	    replay(breeder);
 	    
-	    return createTestSeedJob(breeder, states.length);
+	    final Job job =  createTestSeedJob(breeder, states.length);
+	    
+	    // TODO, separate out setup for termination tests from just setting up state.
+	    final MultiTask<Object> mtask = createMock(MultiTask.class);
+	    expect(mtask.get()).andReturn(null).times(0, 1);
+	    replay(mtask);
+	    verify(breeder);
+	    reset(breeder);
+	    expect(breeder.executeCallable(jdcIs(job, DoTerminate.class))).andAnswer(new IAnswer<MultiTask<Object>>(){
+
+			public MultiTask<Object> answer() throws Throwable {
+				((DistributedJob)job).terminateLocal();
+				return mtask;
+			}}).times(0, 1);
+	    replay(breeder);
+	    
+	    return job;
 	}
 
 	@Override
