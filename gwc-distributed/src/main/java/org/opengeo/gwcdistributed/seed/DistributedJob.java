@@ -257,11 +257,15 @@ public abstract class DistributedJob implements Job, Serializable {
 
     public JobStatus getStatus() {
     	checkInitialized();
-        Collection<TaskStatus> taskStatuses = new ArrayList<TaskStatus>(threads.length);
-        for(GWCTask task: threads) {
-            taskStatuses.add(task.getStatus());
-        }
-        return new JobStatus(taskStatuses, System.currentTimeMillis(), this.id);
+        Collection<TaskStatus> taskStatuses;
+		try {
+			taskStatuses = this.getClusterTasksStatus();
+		} catch (Exception e) {
+			// TODO should handle this better, maybe allow getStatus() to throw GeoWebCacheException
+			log.error("Could not retreive state of tasks in job "+this.id+"", e);
+			return null;
+		} 
+		return new JobStatus(taskStatuses, System.currentTimeMillis(), this.id);
     }
 
     class StateIterator implements Iterator<GWCTask.STATE> {
