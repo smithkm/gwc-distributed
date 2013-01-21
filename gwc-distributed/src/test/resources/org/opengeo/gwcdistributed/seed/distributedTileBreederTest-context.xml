@@ -20,5 +20,4 @@
     <bean id="breeder" name="breeder" class="org.opengeo.gwcdistributed.seed.DistributedTileBreederMockedTasks">
       <constructor-arg ref="hzInstance"/>
     </bean>
-
 </beans>
