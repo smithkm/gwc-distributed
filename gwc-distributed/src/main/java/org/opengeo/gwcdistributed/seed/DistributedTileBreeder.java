@@ -184,7 +184,7 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 	public void dispatchJob(Job job) {
 		log.info(String.format("Dispatching Job %d to cluster.  Originating with node %s;", job.getId(), hz.getName()));
 		final Set<Member> members = getHz().getCluster().getMembers();
-		final MultiTask<Object> mtask = new MultiTask<Object>(new DoDispatch(job.getId()), members);
+		final MultiTask<Object> mtask = new MultiTask<Object>(new DoDispatch((DistributedJob)job), members);
 		getHz().getExecutorService().submit(mtask);
 		try {
 			mtask.get();

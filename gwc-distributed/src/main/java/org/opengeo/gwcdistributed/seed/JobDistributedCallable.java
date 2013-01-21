@@ -7,6 +7,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.geowebcache.GeoWebCacheException;
 import org.geowebcache.seed.GWCTask;
 import org.geowebcache.seed.JobNotFoundException;
@@ -17,8 +19,7 @@ import org.springframework.util.Assert;
 import com.hazelcast.spring.context.SpringAware;
 
 /**
- * Callable to retrieve the status of each task within a job.  It's intended
- *  to be distributed across the cluster using an executor service.
+ * Callable to do something to a job and which can be distributed via hazelcast.
  *
  */
 @SpringAware 
@@ -27,6 +28,8 @@ public abstract class JobDistributedCallable<T> implements Callable<T>, Serializ
 	transient private DistributedJob job;
 	transient private DistributedTileBreeder breeder;
 	
+    private static Log log = LogFactory.getLog(DistributedTileBreeder.class);
+    
 	public JobDistributedCallable(DistributedJob job) {
 		super();
 		this.job = job;
@@ -52,7 +55,8 @@ public abstract class JobDistributedCallable<T> implements Callable<T>, Serializ
 	 */
 	@Autowired
 	public void setBreeder(DistributedTileBreeder breeder) throws GeoWebCacheException {
-		Assert.state(breeder==null, "Breeder can only be set once. This method should only be called by Spring.");
+		log.trace("Aquiring local breeder: "+breeder.toString());
+		Assert.state(this.breeder==null, "Breeder can only be set once. This method should only be called by Spring.");
 		Assert.notNull(breeder);
 		this.breeder=breeder;
 		this.job=(DistributedJob) breeder.getJobByID(jobId);
