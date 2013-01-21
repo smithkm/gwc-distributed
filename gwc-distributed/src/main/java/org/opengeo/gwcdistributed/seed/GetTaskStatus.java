@@ -20,37 +20,24 @@ import com.hazelcast.spring.context.SpringAware;
  *  to be distributed across the cluster using an executor service.
  *
  */
-@SpringAware class GetTaskStatus implements Callable<Collection<TaskStatus>>, Serializable {
-	final public long jobId;
-	transient private DistributedTileBreeder breeder;
+@SpringAware class GetTaskStatus extends JobDistributedCallable<Collection<TaskStatus>> {
 	
-	public GetTaskStatus(long jobID) {
-		super();
-		this.jobId = jobID;
+	public GetTaskStatus(DistributedJob job) {
+		super(job);
 	}
 
 	public Collection<TaskStatus> call() throws Exception {
-		Assert.state(breeder!=null, "Breeder was not set");
-		try{
-			GWCTask[] tasks = breeder.getJobByID(jobId).getTasks();
+		assertInit();
+		if(getJob()==null){
+			return Collections.emptyList();
+		} else {
+			GWCTask[] tasks = getJob().getTasks();
 			List<TaskStatus> results = new ArrayList<TaskStatus>(tasks.length);
 			for(GWCTask task: tasks) {
 				results.add(task.getStatus());
 			}
 			return results;
-		} catch (JobNotFoundException ex) {
-			return Collections.emptyList();
 		}
 	}
 	
-	/**
-	 * Set the breeder to use.  This should be called by Spring exactly once.
-	 * @param breeder
-	 */
-	@Autowired
-	public void setBreeder(DistributedTileBreeder breeder){
-		Assert.state(breeder==null, "Breeder can only be set once. This method should only be called by Spring.");
-		Assert.notNull(breeder);
-		this.breeder=breeder;
-	}
 }

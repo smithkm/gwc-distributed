@@ -189,7 +189,7 @@ public abstract class DistributedJob implements Job, Serializable {
 	public Collection<TaskStatus> getClusterTasksStatus() throws ExecutionException, InterruptedException {
     	assertInitialized();
 		final Set<Member> members = breeder.getHz().getCluster().getMembers();
-		final MultiTask<Collection<TaskStatus>> mtask = new MultiTask<Collection<TaskStatus>>(new GetTaskStatus(this.getId()), members);
+		final MultiTask<Collection<TaskStatus>> mtask = new MultiTask<Collection<TaskStatus>>(new GetTaskStatus(this), members);
 		breeder.getHz().getExecutorService().submit(mtask);
 		Collection<Collection<TaskStatus>> statusTree = mtask.get();
 		
