@@ -4,13 +4,13 @@ import java.io.Serializable;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
-import junit.framework.Assert;
-
 import org.geowebcache.storage.DiscontinuousTileRange;
 import org.geowebcache.storage.TileRange;
 import org.geowebcache.storage.TileRangeIterator;
 
 import com.hazelcast.core.AtomicNumber;
+
+import static com.google.common.base.Preconditions.*;
 
 public class DistributedTileRangeIterator implements Serializable, TileRangeIterator{
     final private TileRange tr;
@@ -42,8 +42,8 @@ public class DistributedTileRangeIterator implements Serializable, TileRangeIter
 	public DistributedTileRangeIterator(TileRange tr, int[] metaTilingFactors,
 			AtomicNumber step) {
 		super();
-		Assert.assertTrue("Step must start at 0", step.get()==0);
-		Assert.assertTrue("DiscontinuousTileRange not supported by DistributedTileRangeIterator",!(tr instanceof DiscontinuousTileRange));
+		checkArgument(step.get()==0,"Step must start at 0");
+		checkArgument(!(tr instanceof DiscontinuousTileRange),"DiscontinuousTileRange not supported by DistributedTileRangeIterator");
 		this.tr = tr;
 		this.metaX = metaTilingFactors[0];
 		this.metaY = metaTilingFactors[1];
