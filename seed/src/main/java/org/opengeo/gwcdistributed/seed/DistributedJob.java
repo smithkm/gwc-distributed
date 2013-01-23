@@ -265,7 +265,7 @@ public abstract class DistributedJob implements Job, Serializable {
 			log.error("Could not retreive state of tasks in job "+this.id+"", e);
 			return null;
 		} 
-		return new JobStatus(taskStatuses, System.currentTimeMillis(), this.id);
+		return new JobStatus(taskStatuses, System.currentTimeMillis(), getId(), getThreadCount(), layerName, getType());
     }
 
     class StateIterator implements Iterator<GWCTask.STATE> {

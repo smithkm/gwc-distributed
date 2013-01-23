@@ -3,6 +3,7 @@ package org.opengeo.gwcdistributed.seed;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -221,14 +222,22 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 
 	@Override
 	public Collection<JobStatus> getJobStatusList() {
-		// TODO Auto-generated method stub
-		return null;
+		Collection<JobStatus> statusList = new LinkedList<JobStatus>();
+		for(Job job: jobs.values()){
+			statusList.add(job.getStatus());
+		}
+		return statusList;
 	}
 
 	@Override
 	public Collection<JobStatus> getJobStatusList(String layerName) {
-		// TODO Auto-generated method stub
-		return null;
+		Collection<JobStatus> statusList = new LinkedList<JobStatus>();
+		for(Job job: jobs.values()){
+			if (job.getLayer().getName()==layerName){
+				statusList.add(job.getStatus());
+			}
+		}
+		return statusList;
 	}
 
 	@Override

@@ -3,6 +3,7 @@ package org.opengeo.gwcdistributed.seed;
 import org.geowebcache.GeoWebCacheException;
 import org.geowebcache.layer.TileLayer;
 import org.geowebcache.seed.GWCTask;
+import org.geowebcache.seed.GWCTask.TYPE;
 import org.geowebcache.seed.TruncateJob;
 import org.geowebcache.storage.TileRangeIterator;
 
@@ -23,6 +24,11 @@ public class DistributedTruncateJob extends DistributedJob implements TruncateJo
 	public void runSynchronously() throws GeoWebCacheException,
 			InterruptedException {
 		threads[0].doAction();
+	}
+
+	@Override
+	public TYPE getType() {
+		return GWCTask.TYPE.TRUNCATE;
 	}
 
 }

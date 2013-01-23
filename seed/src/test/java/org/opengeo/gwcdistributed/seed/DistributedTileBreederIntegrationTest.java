@@ -323,7 +323,7 @@ public class DistributedTileBreederIntegrationTest {
 			
 			reset(task);
 			expect(task.getState()).andStubReturn(STATE.RUNNING);
-			expect(task.getStatus()).andReturn(new TaskStatus(0, 0, 0, 0, i++, STATE.RUNNING));
+			expect(task.getStatus()).andReturn(new TaskStatus(0, 0, 0, 0, i++, id, STATE.RUNNING));
 			replay(task);
 		}
 		for(SeedTask task: tasks2){
@@ -331,7 +331,7 @@ public class DistributedTileBreederIntegrationTest {
 			
 			reset(task);
 			expect(task.getState()).andStubReturn(STATE.RUNNING);
-			expect(task.getStatus()).andReturn(new TaskStatus(0, 0, 0, 0, i++, STATE.RUNNING));
+			expect(task.getStatus()).andReturn(new TaskStatus(0, 0, 0, 0, i++, id, STATE.RUNNING));
 			replay(task);
 		}
 		// Terminate

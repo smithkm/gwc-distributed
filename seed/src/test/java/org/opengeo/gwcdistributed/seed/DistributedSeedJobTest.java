@@ -99,7 +99,7 @@ public class DistributedSeedJobTest extends AbstractJobTest {
         for(STATE state: states){
 		    final SeedTask task = SeedTestUtils.createMockSeedTask(breeder);
 		    expect(task.getState()).andStubReturn(state);
-		    TaskStatus status = new TaskStatus(0, 0, 0, 0, 0, state);
+		    TaskStatus status = new TaskStatus(0, 0, 0, 0, 0, 0, state);
 		    expect(task.getStatus()).andStubReturn(status);
 		    replay(task);
 	    }

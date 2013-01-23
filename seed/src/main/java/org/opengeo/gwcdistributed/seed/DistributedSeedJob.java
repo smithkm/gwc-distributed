@@ -3,6 +3,7 @@ package org.opengeo.gwcdistributed.seed;
 import org.geowebcache.GeoWebCacheException;
 import org.geowebcache.layer.TileLayer;
 import org.geowebcache.seed.GWCTask;
+import org.geowebcache.seed.GWCTask.TYPE;
 import org.geowebcache.seed.SeedJob;
 import org.geowebcache.seed.TileRequest;
 import org.geowebcache.storage.TileRangeIterator;
@@ -51,6 +52,11 @@ public class DistributedSeedJob extends DistributedJob implements SeedJob{
 	public boolean isReseed() {
 		// TODO Auto-generated method stub
 		return false;
+	}
+
+	@Override
+	public TYPE getType() {
+		return isReseed() ? GWCTask.TYPE.RESEED : GWCTask.TYPE.SEED;
 	}
 
 }

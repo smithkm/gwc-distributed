@@ -159,6 +159,9 @@
 
     <bean id="gwcTileBreeder" class="org.opengeo.gwcdistributed.seed.DistributedTileBreederMockedTasks">
       <constructor-arg ref="hzInstance"/>
+      <property name="tileLayerDispatcher" ref="gwcTLDispatcher"/>
+      <property name="threadPoolExecutor" ref="gwcSeederThreadPoolExec"/>
+      <property name="storageBroker" ref="gwcStorageBroker"/>
     </bean>
 
   <!-- Breeder (the one that seeds) -->
