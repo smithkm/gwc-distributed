@@ -157,7 +157,7 @@
      </hz:config>
     </hz:hazelcast>
 
-    <bean id="gwcTileBreeder" class="org.opengeo.gwcdistributed.seed.DistributedTileBreederMockedTasks">
+    <bean id="gwcTileBreeder" class="org.opengeo.gwcdistributed.seed.DistributedTileBreeder">
       <constructor-arg ref="hzInstance"/>
       <property name="tileLayerDispatcher" ref="gwcTLDispatcher"/>
       <property name="threadPoolExecutor" ref="gwcSeederThreadPoolExec"/>

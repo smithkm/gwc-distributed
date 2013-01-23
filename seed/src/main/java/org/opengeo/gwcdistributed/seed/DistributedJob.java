@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -15,6 +16,7 @@ import org.geowebcache.GeoWebCacheException;
 import org.geowebcache.layer.TileLayer;
 import org.geowebcache.seed.GWCTask;
 import org.geowebcache.seed.GWCTask.STATE;
+import org.geowebcache.seed.GWCTask.TYPE;
 import org.geowebcache.seed.Job;
 import org.geowebcache.seed.JobNotFoundException;
 import org.geowebcache.seed.JobStatus;
@@ -188,18 +190,29 @@ public abstract class DistributedJob implements Job, Serializable {
 	 * @throws ExecutionException
 	 * @throws InterruptedException
 	 */
-	public Collection<TaskStatus> getClusterTasksStatus() throws ExecutionException, InterruptedException {
+	@Override
+	public Collection<TaskStatus> getTaskStatus(){
     	checkInitialized();
-		final MultiTask<Collection<TaskStatus>> mtask = breeder.executeCallable(new GetTaskStatus(this));
-		Collection<Collection<TaskStatus>> statusTree = mtask.get();
-		
+    	
+    	Collection<Collection<TaskStatus>> statusTree=Collections.EMPTY_LIST;
+    	final MultiTask<Collection<TaskStatus>> mtask;
+    	try {
+			 mtask = breeder.executeCallable(new GetTaskStatus(this));
+			 statusTree = mtask.get();
+    	} catch (ExecutionException ex){
+    		log.fatal("Could not get status of tasks for job "+this.getId(), ex);
+    	} catch(InterruptedException ex) {
+    		log.fatal("Could not get status of tasks for job "+this.getId(), ex);
+    	}
+			
 		// Flatten into single collection
 		List<TaskStatus> result = new ArrayList<TaskStatus>((int)(statusTree.size()*this.getThreadCount()));
-		for(Collection<TaskStatus> statusForNode: mtask.get()) {
+		for(Collection<TaskStatus> statusForNode: statusTree) {
 			result.addAll(statusForNode);
 		}
 		
 		return result;
+  
 	}
 
 	public void terminate() {
@@ -259,13 +272,13 @@ public abstract class DistributedJob implements Job, Serializable {
     	checkInitialized();
         Collection<TaskStatus> taskStatuses;
 		try {
-			taskStatuses = this.getClusterTasksStatus();
+			taskStatuses = this.getTaskStatus();
 		} catch (Exception e) {
 			// TODO should handle this better, maybe allow getStatus() to throw GeoWebCacheException
 			log.error("Could not retreive state of tasks in job "+this.id+"", e);
 			return null;
 		} 
-		return new JobStatus(taskStatuses, System.currentTimeMillis(), getId(), getThreadCount(), layerName, getType());
+		return new JobStatus(this);
     }
 
     class StateIterator implements Iterator<GWCTask.STATE> {

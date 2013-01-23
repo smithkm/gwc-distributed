@@ -198,7 +198,7 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 	
 	void localDispatchJob(Job job) {
 		log.debug(String.format("Dispatching Job %d on node %s", job.getId(), hz.getName()));
-		for(GWCTask task: job.getTasks()){
+		for(GWCTask task: ((DistributedJob)job).getTasks()){
 			try {
 				log.trace(String.format("Starting task %d for job %d on node %s", task.getTaskId(), job.getId(), hz.getName()));
 				task.doAction();
@@ -266,13 +266,6 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 
 	@Override
 	public StorageBroker getStorageBroker() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public TileLayer findTileLayer(String layerName)
-			throws GeoWebCacheException {
 		// TODO Auto-generated method stub
 		return null;
 	}
