@@ -49,6 +49,8 @@ import com.hazelcast.core.ItemListener;
 import com.hazelcast.core.Member;
 import com.hazelcast.core.MultiTask;
 
+import static com.google.common.base.Preconditions.*;
+
 public class DistributedTileBreeder extends TileBreeder implements ApplicationContextAware {
 
 	public DistributedTileBreeder(HazelcastInstance hz) {
@@ -91,6 +93,8 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 
     private final IdGenerator currentTaskId;
     private final IdGenerator currentJobId;
+    
+    private StorageBroker broker;
 
     //private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -201,6 +205,7 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 		for(GWCTask task: ((DistributedJob)job).getTasks()){
 			try {
 				log.trace(String.format("Starting task %d for job %d on node %s", task.getTaskId(), job.getId(), hz.getName()));
+				// TODO need to replace with dispatch to an executor.
 				task.doAction();
 			} catch (Exception e) {
 				log.error(String.format("Exception dispatching Job %d Task %d on node %s \n", job.getId(), task.getTaskId(), hz.getName()));
@@ -260,14 +265,15 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 
 	@Override
 	public void setStorageBroker(StorageBroker sb) {
-		// TODO Auto-generated method stub
-
+		checkState(broker==null);
+		checkNotNull(sb);
+		this.broker=sb;
 	}
 
 	@Override
 	public StorageBroker getStorageBroker() {
-		// TODO Auto-generated method stub
-		return null;
+		checkState(broker!=null);
+		return broker;
 	}
 
 	@Override
