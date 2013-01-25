@@ -28,7 +28,7 @@ public abstract class JobDistributedCallable<T> implements Callable<T>, Serializ
 	transient private DistributedJob job;
 	transient private DistributedTileBreeder breeder;
 	
-    private static Log log = LogFactory.getLog(DistributedTileBreeder.class);
+    private static Log log = LogFactory.getLog(JobDistributedCallable.class);
     
 	public JobDistributedCallable(DistributedJob job) {
 		super();
