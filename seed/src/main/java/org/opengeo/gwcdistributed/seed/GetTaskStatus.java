@@ -20,7 +20,7 @@ import com.hazelcast.spring.context.SpringAware;
  *  to be distributed across the cluster using an executor service.
  *
  */
-@SpringAware class GetTaskStatus extends JobDistributedCallable<Collection<TaskStatus>> {
+class GetTaskStatus extends JobDistributedCallable<Collection<TaskStatus>> {
 	
 	public GetTaskStatus(DistributedJob job) {
 		super(job);

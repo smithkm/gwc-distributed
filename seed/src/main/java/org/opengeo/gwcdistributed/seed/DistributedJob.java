@@ -217,7 +217,7 @@ public abstract class DistributedJob implements Job, Serializable {
 
 	public void terminate() {
 		checkInitialized();
-		MultiTask<Object> mtask = breeder.executeCallable(new DoTerminate(this));
+		MultiTask<Object> mtask = breeder.executeCallable(new DoTerminateJob(this));
 		try {
 			mtask.get();
 		} catch (ExecutionException e) {

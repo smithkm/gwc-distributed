@@ -304,8 +304,28 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 
 	@Override
 	public boolean terminateGWCTask(long id) {
-		// TODO Auto-generated method stub
-		return false;
+		MultiTask<Boolean> mtask = this.executeCallable(new DoTerminateTask(this, id));
+		try {
+			for(boolean b: mtask.get()){
+				if (b)
+					return true;
+			}
+			return false;
+		} catch (Exception e) {
+			log.error("Error while terminating task "+id, e);
+			return false;
+		}
+		
+	}
+	
+	boolean terminateLocalGWCTask(long id) {
+        SubmittedTask submittedTask = this.currentPool.remove(Long.valueOf(id));
+        if (submittedTask == null) {
+            return false;
+        }
+        submittedTask.task.terminateNicely();
+        // submittedTask.future.cancel(true);
+        return true;
 	}
 
 	@Override

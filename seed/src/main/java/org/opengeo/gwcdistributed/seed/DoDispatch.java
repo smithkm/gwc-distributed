@@ -14,7 +14,7 @@ import com.hazelcast.spring.context.SpringAware;
  * Callable to dispatch a job on each node.
  *
  */
-@SpringAware class DoDispatch extends JobDistributedCallable<Object> {
+class DoDispatch extends JobDistributedCallable<Object> {
     private static Log log = LogFactory.getLog(DistributedTileBreeder.class);
 
 	public DoDispatch(DistributedJob job) {
@@ -23,8 +23,7 @@ import com.hazelcast.spring.context.SpringAware;
 
 	public Collection<Object> call() throws Exception {
 	    log.trace("Dispatching job "+jobId+" on local breeder");
-		
-		Assert.state(getBreeder()!=null, "Breeder was not set");
+		assertInit();
 		Job j = getBreeder().getJobByID(jobId);
 		getBreeder().localDispatchJob(j);
 		return null;

@@ -86,7 +86,7 @@ public class DistributedSeedJobTest extends AbstractJobTest {
 	 * @param clazz subclass of JobDistributedCallable it should be an instance of
 	 * @return
 	 */
-	static <T,U extends JobDistributedCallable<T>> JobDistributedCallable<T> jdcIs(Job job, Class<U> clazz){
+	static <T,U extends DistributedCallable<T>> DistributedCallable<T> jdcIs(Job job, Class<U> clazz){
 		EasyMock2Adapter.adapt(both(hasProperty("job", equalTo(job))).and(instanceOf(clazz)));
 		return null;
 	}
@@ -113,7 +113,7 @@ public class DistributedSeedJobTest extends AbstractJobTest {
 	    replay(mtask);
 	    verify(breeder);
 	    reset(breeder);
-	    expect(breeder.executeCallable(jdcIs(job, DoTerminate.class))).andAnswer(new IAnswer<MultiTask<Object>>(){
+	    expect(breeder.executeCallable(jdcIs(job, DoTerminateJob.class))).andAnswer(new IAnswer<MultiTask<Object>>(){
 
 			public MultiTask<Object> answer() throws Throwable {
 				((DistributedJob)job).terminateLocal();

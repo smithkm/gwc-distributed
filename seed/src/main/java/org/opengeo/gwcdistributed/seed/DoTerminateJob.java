@@ -5,9 +5,9 @@ package org.opengeo.gwcdistributed.seed;
  * @author smithkm
  *
  */
-public class DoTerminate extends JobDistributedCallable<Object> {
+public class DoTerminateJob extends JobDistributedCallable<Object> {
 
-	public DoTerminate(DistributedJob job) {
+	public DoTerminateJob(DistributedJob job) {
 		super(job);
 	}
 
