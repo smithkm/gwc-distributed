@@ -1,7 +1,6 @@
 package org.opengeo.gwcdistributed.seed;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
@@ -10,18 +9,15 @@ import java.util.TreeMap;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.geowebcache.GeoWebCacheException;
 import org.geowebcache.layer.TileLayer;
-import org.geowebcache.layer.TileLayerDispatcher;
 import org.geowebcache.seed.GWCTask;
 import org.geowebcache.seed.GWCTask.STATE;
 import org.geowebcache.seed.GWCTask.TYPE;
 import org.geowebcache.seed.Job;
-import org.geowebcache.seed.JobNotFoundException;
 import org.geowebcache.seed.JobStatus;
 import org.geowebcache.seed.SeedJob;
 import org.geowebcache.seed.SeedRequest;
@@ -53,6 +49,14 @@ import static com.google.common.base.Preconditions.*;
 
 public class DistributedTileBreeder extends TileBreeder implements ApplicationContextAware {
 
+	@Override
+	public Job createJob(TileRange tr, TileLayer tl, TYPE type,
+			int threadCount, boolean filterUpdate) throws GeoWebCacheException {
+		Job j = super.createJob(tr, tl, type, threadCount, filterUpdate);
+		while(j.getState()!=STATE.READY){}; // FIXME
+		return j;
+	}
+	
 	public DistributedTileBreeder(HazelcastInstance hz) {
 		super();
 		this.hz = hz;
@@ -119,7 +123,9 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 		public void itemAdded(ItemEvent<DistributedJob> item) {
 			DistributedJob j = item.getItem();
 			log.info(String.format("Job %d added to cluster, adding to breeder on node %s\n",j.getId(), hz.getName()));
-			jobs.put(j.getId(), j);
+
+				j.createTasks();
+				jobs.put(j.getId(), j);
 		}
 
 		public void itemRemoved(ItemEvent<DistributedJob> item) {

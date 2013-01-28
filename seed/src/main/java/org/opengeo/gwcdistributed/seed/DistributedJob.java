@@ -330,14 +330,16 @@ public abstract class DistributedJob implements Job, Serializable {
     	
     	this.breeder = breeder;
     	
+    	
+    	
     	// Set up other transient fields from breeder.
     	this.tl = breeder.getTileLayerDispatcher().getTileLayer(layerName);
     	try{
     		this.threads = ((DistributedJob)breeder.getJobByID(this.id)).threads;
     		log.info("Local job found, acquired local tasks.");
     	} catch (JobNotFoundException ex) {
-    		log.info("Local job not found, creating new set of local tasks.");
-    		createTasks();
+    		log.info("Local job not found, must be new");
+    		//createTasks();
     	}
 
     }
