@@ -336,8 +336,7 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 
 	@Override
 	protected long getNextTaskId() {
-		// TODO Auto-generated method stub
-		return 0;
+		return currentTaskId.newId();
 	}
 
 	/**
