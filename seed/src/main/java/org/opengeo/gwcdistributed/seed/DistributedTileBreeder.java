@@ -346,6 +346,13 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 	public HazelcastInstance getHz() {
 		return hz;
 	}
+	/**
+	 * Get the HazelCast node this Breeder is running on. 
+	 * @return
+	 */
+	public Member getNode() {
+		return getHz().getCluster().getLocalMember();
+	}
 
 	@Override
 	protected Callable<GWCTask> wrapTask(GWCTask task) {

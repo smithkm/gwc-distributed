@@ -34,7 +34,7 @@ class GetTaskStatus extends JobDistributedCallable<Collection<TaskStatus>> {
 			GWCTask[] tasks = getJob().getTasks();
 			List<TaskStatus> results = new ArrayList<TaskStatus>(tasks.length);
 			for(GWCTask task: tasks) {
-				results.add(task.getStatus());
+				results.add(new DistributedTaskStatus(task));
 			}
 			return results;
 		}
