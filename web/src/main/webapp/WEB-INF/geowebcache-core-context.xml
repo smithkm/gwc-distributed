@@ -151,6 +151,7 @@
 
     <hz:hazelcast id="hzInstance">
      <hz:config>
+        <hz:group password="foo" name="gwc"/>
         <hz:properties>
           <hz:property name="hazelcast.logging.type">log4j</hz:property>
         </hz:properties>

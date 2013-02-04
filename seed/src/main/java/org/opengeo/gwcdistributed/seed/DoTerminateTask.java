@@ -7,6 +7,10 @@ package org.opengeo.gwcdistributed.seed;
  */
 public class DoTerminateTask extends DistributedCallable<Boolean> {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -1633379226901413347L;
 	long taskId;
 	
 	public DoTerminateTask(DistributedTileBreeder breeder, long taskId) {

@@ -32,9 +32,11 @@ import org.geowebcache.storage.TileRange;
 import org.geowebcache.storage.TileRangeIterator;
 import org.geowebcache.util.GWCVars;
 import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.BeanInitializationException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.util.Assert;
 
 import com.hazelcast.core.AtomicNumber;
 import com.hazelcast.core.HazelcastInstance;
@@ -53,7 +55,14 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 	public Job createJob(TileRange tr, TileLayer tl, TYPE type,
 			int threadCount, boolean filterUpdate) throws GeoWebCacheException {
 		Job j = super.createJob(tr, tl, type, threadCount, filterUpdate);
-		while(j.getState()!=STATE.READY){}; // FIXME
+		boolean propagated=false;
+		while(!propagated){
+			try{
+				propagated = j.getState()!=STATE.READY;
+			} catch (BeanCreationException ex) {
+				propagated = false;
+			}
+		}// FIXME Spinlocking on a network operation probably isn't the best solution.
 		return j;
 	}
 	
@@ -417,4 +426,20 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 		final Set<Member> members = getHz().getCluster().getMembers();
 		return executeCallable(callable, members);
 	}
+	
+    @Override
+    protected void jobDone(Job job) {
+        try{
+            super.jobDone(job);
+            DistributedJob tJob = (DistributedJob) job;
+            for(GWCTask task: tJob.getTasks()){
+                Assert.state(task.getState().isStopped(), "Job reported done has tasks that have not stopped.");
+            }
+        } finally {
+            // TODO, fire an event to let interested parties know a job has completed.
+            //drain();
+        }
+        
+    }
+
 }

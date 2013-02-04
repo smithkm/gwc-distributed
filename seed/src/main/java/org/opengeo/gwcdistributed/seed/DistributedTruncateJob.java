@@ -5,9 +5,13 @@ import org.geowebcache.layer.TileLayer;
 import org.geowebcache.seed.GWCTask;
 import org.geowebcache.seed.GWCTask.TYPE;
 import org.geowebcache.seed.TruncateJob;
-import org.geowebcache.storage.TileRangeIterator;
 
 public class DistributedTruncateJob extends DistributedJob implements TruncateJob {
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -6904431211868719738L;
 
 	protected DistributedTruncateJob(long id, DistributedTileBreeder breeder,
 			TileLayer tl, DistributedTileRangeIterator tri,

@@ -102,9 +102,9 @@ public class DistributedTileBreederIntegrationTest {
 			verify(task);
 		}
 
-		assertThat(job.getTasks(), Matchers.arrayContainingInAnyOrder(tasks1.toArray()));
-		assertThat(breeder1.getJobByID(id).getTasks(), Matchers.arrayContainingInAnyOrder(tasks1.toArray()));
-		assertThat(breeder2.getJobByID(id).getTasks(), Matchers.arrayContainingInAnyOrder(tasks2.toArray()));
+		assertThat(((DistributedJob)job).getTasks(), Matchers.arrayContainingInAnyOrder(tasks1.toArray()));
+		assertThat(((DistributedJob)breeder1.getJobByID(id)).getTasks(), Matchers.arrayContainingInAnyOrder(tasks1.toArray()));
+		assertThat(((DistributedJob)breeder2.getJobByID(id)).getTasks(), Matchers.arrayContainingInAnyOrder(tasks2.toArray()));
 		
 	}
 	
@@ -320,18 +320,26 @@ public class DistributedTileBreederIntegrationTest {
 		int i = 0;
 		for(SeedTask task: tasks1){
 			verify(task);
+
+			TaskStatus status = createMock(DistributedTaskStatus.class);
+			// TODO
+			replay(status);
 			
 			reset(task);
 			expect(task.getState()).andStubReturn(STATE.RUNNING);
-			expect(task.getStatus()).andReturn(new TaskStatus(0, 0, 0, 0, i++, id, STATE.RUNNING));
+			expect(task.getStatus()).andReturn(status);
 			replay(task);
 		}
 		for(SeedTask task: tasks2){
 			verify(task);
 			
+			TaskStatus status = createMock(DistributedTaskStatus.class);
+			// TODO
+			replay(status);
+
 			reset(task);
 			expect(task.getState()).andStubReturn(STATE.RUNNING);
-			expect(task.getStatus()).andReturn(new TaskStatus(0, 0, 0, 0, i++, id, STATE.RUNNING));
+			expect(task.getStatus()).andReturn(status);
 			replay(task);
 		}
 		// Terminate

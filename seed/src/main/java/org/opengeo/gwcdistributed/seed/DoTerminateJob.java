@@ -7,6 +7,11 @@ package org.opengeo.gwcdistributed.seed;
  */
 public class DoTerminateJob extends JobDistributedCallable<Object> {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 8566019579984976350L;
+
 	public DoTerminateJob(DistributedJob job) {
 		super(job);
 	}

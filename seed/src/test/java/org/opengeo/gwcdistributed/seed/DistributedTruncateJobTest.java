@@ -4,6 +4,7 @@ import static org.junit.Assert.*;
 
 import org.geowebcache.layer.TileLayer;
 import org.geowebcache.seed.AbstractJobTest;
+import org.geowebcache.seed.GWCTask;
 import org.geowebcache.seed.GWCTask.STATE;
 import org.geowebcache.seed.Job;
 import org.geowebcache.seed.SeedTestUtils;
@@ -59,7 +60,7 @@ public class DistributedTruncateJobTest extends AbstractJobTest {
 	    return job;
 	}
 
-	@Override
+	//@Override
 	protected Job jobWithTaskStates(STATE... states) throws Exception {
 		assumeTrue(states.length==1); // Tests with multiple tasks don't make sense for Truncate jobs.
 		
@@ -86,9 +87,21 @@ public class DistributedTruncateJobTest extends AbstractJobTest {
 		return createMock(DistributedTileBreeder.class);
 	}
 
-	@Override
+	//@Override
 	protected Job createTestSeedJob(TileBreeder breeder, int threads) {
 		assumeTrue(false);
+		return null;
+	}
+
+	@Override
+	protected Job createTestJob(TileBreeder breeder, int threads) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	protected GWCTask createMockTask(TileBreeder mockBreeder) throws Exception {
+		// TODO Auto-generated method stub
 		return null;
 	}
 }

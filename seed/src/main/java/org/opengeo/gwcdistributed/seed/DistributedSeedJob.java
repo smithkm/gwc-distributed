@@ -6,9 +6,13 @@ import org.geowebcache.seed.GWCTask;
 import org.geowebcache.seed.GWCTask.TYPE;
 import org.geowebcache.seed.SeedJob;
 import org.geowebcache.seed.TileRequest;
-import org.geowebcache.storage.TileRangeIterator;
 
 public class DistributedSeedJob extends DistributedJob implements SeedJob{
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 8529077897929948719L;
 
 	protected DistributedSeedJob(long id, DistributedTileBreeder breeder,
 			TileLayer tl, int threadCount, DistributedTileRangeIterator tri,

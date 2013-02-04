@@ -2,12 +2,10 @@ package org.opengeo.gwcdistributed.seed;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.commons.logging.Log;
@@ -16,7 +14,6 @@ import org.geowebcache.GeoWebCacheException;
 import org.geowebcache.layer.TileLayer;
 import org.geowebcache.seed.GWCTask;
 import org.geowebcache.seed.GWCTask.STATE;
-import org.geowebcache.seed.GWCTask.TYPE;
 import org.geowebcache.seed.Job;
 import org.geowebcache.seed.JobNotFoundException;
 import org.geowebcache.seed.JobStatus;
@@ -24,16 +21,10 @@ import org.geowebcache.seed.JobUtils;
 import org.geowebcache.seed.TaskStatus;
 import org.geowebcache.seed.TileBreeder;
 import org.geowebcache.seed.TileRequest;
-import org.geowebcache.seed.threaded.ThreadedTileBreeder;
 import org.geowebcache.storage.TileRange;
-import org.geowebcache.storage.TileRangeIterator;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.util.Assert;
 
-import com.google.common.base.Preconditions;
 import com.hazelcast.core.AtomicNumber;
-import com.hazelcast.core.Hazelcast;
-import com.hazelcast.core.Member;
 import com.hazelcast.core.MultiTask;
 import com.hazelcast.spring.context.SpringAware;
 
@@ -42,7 +33,13 @@ import static com.google.common.base.Preconditions.*;
 @SpringAware
 public abstract class DistributedJob implements Job, Serializable {
 
-    final private AtomicNumber activeThreads;
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = 3754166281969849027L;
+	
+	
+	final private AtomicNumber activeThreads;
     final protected int threadCount;
     final protected long id;
     final protected DistributedTileRangeIterator trItr;
@@ -119,6 +116,11 @@ public abstract class DistributedJob implements Job, Serializable {
 	@SpringAware
 	static class DistributedTileRequest implements TileRequest, Serializable {
 		
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = -6149290606458179119L;
+		
 		final long[] gridLoc;
 		final long jobId;
 		long retryAt = 0;
@@ -194,7 +196,8 @@ public abstract class DistributedJob implements Job, Serializable {
 	public Collection<TaskStatus> getTaskStatus(){
     	checkInitialized();
     	
-    	Collection<Collection<TaskStatus>> statusTree=Collections.EMPTY_LIST;
+    	@SuppressWarnings("unchecked")
+		Collection<Collection<TaskStatus>> statusTree=Collections.EMPTY_LIST;
     	final MultiTask<Collection<TaskStatus>> mtask;
     	try {
 			 mtask = breeder.executeCallable(new GetTaskStatus(this));
@@ -249,10 +252,30 @@ public abstract class DistributedJob implements Job, Serializable {
 		activeThreads.incrementAndGet();
 	}
 
-	public void threadStopped(GWCTask thread) {
-		checkMyTask(thread);
-		activeThreads.decrementAndGet();
-	}
+    public void threadStopped(GWCTask thread) {
+        //myTask(thread);
+        
+        long membersRemaining = activeThreads.decrementAndGet();
+        if (0 == membersRemaining) {
+            finished();
+        } else if (membersRemaining<0) {
+            throw new IllegalStateException("A job can not have fewer than 0 active threads.");
+        }
+    }
+    /**
+     * Called when all the tasks in the job have finished running.
+     */
+    protected void finished(){
+        if (doFilterUpdate) {
+            //runFilterUpdates();
+        }
+        
+        double groupTotalTimeSecs = (System.currentTimeMillis() - (double) groupStartTime) / 1000;
+        log.info("Job "+id+" finished " /*+ parsedType*/ + " after "
+                + groupTotalTimeSecs + " seconds");
+        
+        ((DistributedTileBreeder)breeder).jobDone(this);
+    }
 
 	public TileBreeder getBreeder() {
     	checkInitialized();

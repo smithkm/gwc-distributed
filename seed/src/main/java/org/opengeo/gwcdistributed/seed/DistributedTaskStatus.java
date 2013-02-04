@@ -7,6 +7,11 @@ import com.hazelcast.core.Member;
 
 public class DistributedTaskStatus extends TaskStatus {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 963332884550129438L;
+	
 	final Member node;
 	
 	public DistributedTaskStatus(GWCTask task) {

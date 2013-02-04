@@ -21,6 +21,11 @@ import com.hazelcast.spring.context.SpringAware;
  */
 @SpringAware
 public abstract class DistributedCallable<T> implements Serializable, Callable<T>{
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -4277840248095413513L;
+
 	static Log log = LogFactory.getLog(DistributedCallable.class);
 
 	protected transient DistributedTileBreeder breeder;

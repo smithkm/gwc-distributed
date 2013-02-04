@@ -1,8 +1,6 @@
 package org.opengeo.gwcdistributed.seed;
 
 import java.io.Serializable;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
 
 import org.geowebcache.storage.DiscontinuousTileRange;
 import org.geowebcache.storage.TileRange;
@@ -13,7 +11,13 @@ import com.hazelcast.core.AtomicNumber;
 import static com.google.common.base.Preconditions.*;
 
 public class DistributedTileRangeIterator implements Serializable, TileRangeIterator{
-    final private TileRange tr;
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -4866094287391343630L;
+
+	final private TileRange tr;
 
     final private int metaX;
 

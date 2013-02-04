@@ -1,19 +1,12 @@
 package org.opengeo.gwcdistributed.seed;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.Callable;
 
 import org.geowebcache.seed.GWCTask;
-import org.geowebcache.seed.JobNotFoundException;
 import org.geowebcache.seed.TaskStatus;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.util.Assert;
-
-import com.hazelcast.spring.context.SpringAware;
 
 /**
  * Callable to retrieve the status of each task within a job.  It's intended
@@ -21,7 +14,12 @@ import com.hazelcast.spring.context.SpringAware;
  *
  */
 class GetTaskStatus extends JobDistributedCallable<Collection<TaskStatus>> {
-	
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -164838784678432156L;
+
 	public GetTaskStatus(DistributedJob job) {
 		super(job);
 	}

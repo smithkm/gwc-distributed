@@ -5,6 +5,7 @@ import org.apache.commons.logging.LogFactory;
 import org.easymock.IAnswer;
 import org.geowebcache.layer.TileLayer;
 import org.geowebcache.seed.AbstractJobTest;
+import org.geowebcache.seed.GWCTask;
 import org.geowebcache.seed.GWCTask.STATE;
 import org.geowebcache.seed.Job;
 import org.geowebcache.seed.SeedTask;
@@ -91,7 +92,7 @@ public class DistributedSeedJobTest extends AbstractJobTest {
 		return null;
 	}
 	
-	@Override
+	//@Override
 	protected Job jobWithTaskStates(STATE... states) throws Exception {
 
         final DistributedTileBreeder breeder = (DistributedTileBreeder) createMockTileBreeder();
@@ -99,7 +100,9 @@ public class DistributedSeedJobTest extends AbstractJobTest {
         for(STATE state: states){
 		    final SeedTask task = SeedTestUtils.createMockSeedTask(breeder);
 		    expect(task.getState()).andStubReturn(state);
-		    TaskStatus status = new TaskStatus(0, 0, 0, 0, 0, 0, state);
+		    TaskStatus status = createMock(DistributedTaskStatus.class);
+		    expect(status.getState()).andStubReturn(state);
+		    replay(state);
 		    expect(task.getStatus()).andStubReturn(status);
 		    replay(task);
 	    }
@@ -131,7 +134,7 @@ public class DistributedSeedJobTest extends AbstractJobTest {
 	    return breeder;
 	}
 
-	@Override
+	//@Override
 	protected Job createTestSeedJob(TileBreeder breeder, int threads) {
 	    TileLayer tl = createMock(TileLayer.class); {
 	    	expect(tl.getName()).andStubReturn("testLayer");
@@ -142,5 +145,17 @@ public class DistributedSeedJobTest extends AbstractJobTest {
 	    	expect(tri.getTileRange()).andStubReturn(tr);
 	    } replay(tri);
         return new DistributedSeedJob(1l, (DistributedTileBreeder) breeder, tl, threads, tri, false);
+	}
+
+	@Override
+	protected Job createTestJob(TileBreeder breeder, int threads) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	protected GWCTask createMockTask(TileBreeder mockBreeder) throws Exception {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }

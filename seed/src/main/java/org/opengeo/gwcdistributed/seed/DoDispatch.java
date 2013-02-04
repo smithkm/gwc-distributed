@@ -6,16 +6,17 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.geowebcache.seed.Job;
 
-import org.springframework.util.Assert;
-
-import com.hazelcast.spring.context.SpringAware;
-
 /**
  * Callable to dispatch a job on each node.
  *
  */
 class DoDispatch extends JobDistributedCallable<Object> {
-    private static Log log = LogFactory.getLog(DistributedTileBreeder.class);
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = 404971908470072126L;
+	
+	private static Log log = LogFactory.getLog(DistributedTileBreeder.class);
 
 	public DoDispatch(DistributedJob job) {
 		super(job);
