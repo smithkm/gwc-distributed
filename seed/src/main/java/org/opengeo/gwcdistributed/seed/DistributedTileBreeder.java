@@ -393,7 +393,7 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 		final long id = currentJobId.newId();
 		final AtomicNumber step = hz.getAtomicNumber(DistributedJob.getKey(ITERATOR_STEP_KEY, id));
 		DistributedTileRangeIterator dTrIter = new DistributedTileRangeIterator(trIter, step);
-		DistributedSeedJob job = new DistributedSeedJob(id, this, tl, threadCount, dTrIter, filterUpdate);
+		DistributedSeedJob job = new DistributedSeedJob(id, this, reseed, tl, threadCount, dTrIter, filterUpdate);
 		log.trace(String.format("Seed Job %d created on node %s, adding to cluster.",job.getId(), hz.getName()));
 		return job;
 	}

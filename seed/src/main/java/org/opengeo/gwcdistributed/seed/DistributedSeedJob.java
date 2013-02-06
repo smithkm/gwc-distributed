@@ -9,15 +9,18 @@ import org.geowebcache.seed.TileRequest;
 
 public class DistributedSeedJob extends DistributedJob implements SeedJob{
 
+	private final boolean reseed;
+	
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 8529077897929948719L;
 
 	protected DistributedSeedJob(long id, DistributedTileBreeder breeder,
-			TileLayer tl, int threadCount, DistributedTileRangeIterator tri,
+			boolean reseed, TileLayer tl, int threadCount, DistributedTileRangeIterator tri,
 			boolean doFilterUpdate) {
 		super(id, breeder, tl, threadCount, tri, doFilterUpdate);
+		this.reseed = reseed;
 	}
 	
 	protected void createTasks(){
@@ -54,8 +57,7 @@ public class DistributedSeedJob extends DistributedJob implements SeedJob{
 	}
 
 	public boolean isReseed() {
-		// TODO Auto-generated method stub
-		return false;
+		return reseed;
 	}
 
 	@Override

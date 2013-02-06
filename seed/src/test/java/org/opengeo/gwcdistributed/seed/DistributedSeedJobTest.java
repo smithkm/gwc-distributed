@@ -74,7 +74,7 @@ public class DistributedSeedJobTest extends AbstractJobTest {
 	    	expect(tl.getName()).andStubReturn("testLayer");
 	    } replay(tl);
 	    
-	    DistributedSeedJob job = new DistributedSeedJob(1, breeder, tl, 1, dtri, false);
+	    DistributedSeedJob job = new DistributedSeedJob(1, breeder, false, tl, 1, dtri, false);
 	    
 	    job.threads[0] = task;
 
@@ -144,7 +144,7 @@ public class DistributedSeedJobTest extends AbstractJobTest {
 	    DistributedTileRangeIterator tri = createMock(DistributedTileRangeIterator.class);{
 	    	expect(tri.getTileRange()).andStubReturn(tr);
 	    } replay(tri);
-        return new DistributedSeedJob(1l, (DistributedTileBreeder) breeder, tl, threads, tri, false);
+        return new DistributedSeedJob(1l, (DistributedTileBreeder) breeder, false, tl, threads, tri, false);
 	}
 
 	@Override
