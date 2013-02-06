@@ -15,6 +15,7 @@ import org.geowebcache.layer.TileLayer;
 import org.geowebcache.seed.GWCTask;
 import org.geowebcache.seed.GWCTask.STATE;
 import org.geowebcache.seed.Job;
+import org.geowebcache.seed.JobFailedException;
 import org.geowebcache.seed.JobNotFoundException;
 import org.geowebcache.seed.JobStatus;
 import org.geowebcache.seed.JobUtils;
@@ -236,7 +237,7 @@ public abstract class DistributedJob implements Job, Serializable {
 		checkInitialized();
         for(GWCTask task: threads){
             synchronized(task) {
-                if(task.getState()!=STATE.DEAD && task.getState()!=STATE.DONE){
+                if(!task.getState().isStopped()){
                     task.terminateNicely();
                 }
             }
@@ -366,5 +367,47 @@ public abstract class DistributedJob implements Job, Serializable {
     	}
 
     }
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + (int) (id ^ (id >>> 32));
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		DistributedJob other = (DistributedJob) obj;
+		if (id != other.id)
+			return false;
+		return true;
+	}
+
+	@Override
+	public JobStatus waitForStop() throws InterruptedException {
+        while(true){
+            wait();
+            if(getState().isStopped()){
+                return getStatus();
+            }
+        }
+	}
+
+	@Override
+	public JobStatus waitForComplete() throws InterruptedException,
+			JobFailedException {
+        JobStatus status = waitForStop();
+        if(getState()!=STATE.DONE){
+            throw new JobFailedException(getId(), getState());
+        }
+        return status;
+	}
     
 }

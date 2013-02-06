@@ -157,13 +157,6 @@ public class DistributedTileBreederIntegrationTest {
 		System.out.println("Waiting to give the job a chance to propagate");
 		Thread.sleep(2000);
 		
-		
-		System.out.println("Dispatching Job");
-		breeder1.dispatchJob(job);
-
-		System.out.println("Waiting to give the dispatch a chance to propagate");
-		Thread.sleep(2000);
-		
 		for(SeedTask task: tasks1){
 			verify(task);
 		}
@@ -221,12 +214,6 @@ public class DistributedTileBreederIntegrationTest {
 		System.out.println("Waiting to give the job a chance to propagate");
 		Thread.sleep(2000);
 		
-		
-		System.out.println("Dispatching Job");
-		breeder1.dispatchJob(job);
-
-		System.out.println("Waiting to give the dispatch a chance to propagate");
-		Thread.sleep(2000);
 		
 		// Check that the right calls were made for dispatch, then expect 
 		// the calls for termination
@@ -308,12 +295,6 @@ public class DistributedTileBreederIntegrationTest {
 		System.out.println("Waiting to give the job a chance to propagate");
 		Thread.sleep(2000);
 		
-		
-		System.out.println("Dispatching Job");
-		breeder1.dispatchJob(job);
-
-		System.out.println("Waiting to give the dispatch a chance to propagate");
-		Thread.sleep(2000);
 		
 		// Check that the right calls were made for dispatch, then expect 
 		// the calls for termination

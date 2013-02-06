@@ -9,6 +9,8 @@ import java.util.TreeMap;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -18,6 +20,7 @@ import org.geowebcache.seed.GWCTask;
 import org.geowebcache.seed.GWCTask.STATE;
 import org.geowebcache.seed.GWCTask.TYPE;
 import org.geowebcache.seed.Job;
+import org.geowebcache.seed.JobNotFoundException;
 import org.geowebcache.seed.JobStatus;
 import org.geowebcache.seed.SeedJob;
 import org.geowebcache.seed.SeedRequest;
@@ -55,14 +58,7 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 	public Job createJob(TileRange tr, TileLayer tl, TYPE type,
 			int threadCount, boolean filterUpdate) throws GeoWebCacheException {
 		Job j = super.createJob(tr, tl, type, threadCount, filterUpdate);
-		boolean propagated=false;
-		while(!propagated){
-			try{
-				propagated = j.getState()!=STATE.READY;
-			} catch (BeanCreationException ex) {
-				propagated = false;
-			}
-		}// FIXME Spinlocking on a network operation probably isn't the best solution.
+		jobCloud.add((DistributedJob) j); // The listener will take care of adding this to the local job list.
 		return j;
 	}
 	
@@ -109,6 +105,12 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
     
     private StorageBroker broker;
     private SeederThreadPoolExecutor executor;
+    
+    /**
+     * Lock for manipulating the internal job/task lists.
+     */
+    private final ReadWriteLock lock = new ReentrantReadWriteLock();
+
 
     //private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -131,15 +133,32 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 		
 		public void itemAdded(ItemEvent<DistributedJob> item) {
 			DistributedJob j = item.getItem();
-			log.info(String.format("Job %d added to cluster, adding to breeder on node %s\n",j.getId(), hz.getName()));
+			lock.writeLock().lock();
+			try {
+			log.info(String.format("Job %d added to cluster, adding to breeder on node %s\n",j.getId(), getNode()));
 
 				j.createTasks();
+				localDispatchJob(j);
 				jobs.put(j.getId(), j);
+			} finally {
+				lock.writeLock().unlock();
+			}
 		}
 
 		public void itemRemoved(ItemEvent<DistributedJob> item) {
-			// TODO Auto-generated method stub
+			DistributedJob j = item.getItem();
 			
+			synchronized(j){
+				j.notifyAll();  // Wake up any threads waiting in Job#waitForStop
+			}
+			
+			lock.writeLock().lock();
+			try {
+				log.info(String.format("Job %d removed from node %s\n",j.getId(), getNode()));
+				jobs.remove(j.getId());
+			} finally {
+				lock.writeLock().unlock();
+			}			
 		}
 		
 	}
@@ -196,49 +215,30 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 
         Job job = createJob(tr, tl, sr.getType(), sr.getThreadCount(),
                 sr.getFilterUpdate());
-
-        dispatchJob(job);
 	}
 
 	@Override
-	public void dispatchJob(Job job) {
+	protected void dispatchJob(Job job) {
 		log.info(String.format("Dispatching Job %d to cluster.  Originating with node %s;", job.getId(), hz.getName()));
-		final MultiTask<Object> mtask = executeCallable(new DoDispatch((DistributedJob)job));
-		try {
-			mtask.get();
-		} catch (ExecutionException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 	}
 	
 	void localDispatchJob(Job job) {
 		log.debug(String.format("Dispatching Job %d on node %s", job.getId(), hz.getName()));
-		for(GWCTask task: ((DistributedJob)job).getTasks()){
-			try {
-				log.trace(String.format("Starting task %d for job %d on node %s", task.getTaskId(), job.getId(), hz.getName()));
-                final Long taskId = task.getTaskId();
-                Future<GWCTask> future = executor.submit(wrapTask(task));
-                this.currentPool.put(taskId, new SubmittedTask(task, future));
-			} catch (Exception e) {
-				log.error(String.format("Exception dispatching Job %d Task %d on node %s \n", job.getId(), task.getTaskId(), hz.getName()));
+		lock.writeLock().lock();
+		try {
+			for(GWCTask task: ((DistributedJob)job).getTasks()){
+				try {
+					log.trace(String.format("Starting task %d for job %d on node %s", task.getTaskId(), job.getId(), hz.getName()));
+	                final Long taskId = task.getTaskId();
+	                Future<GWCTask> future = executor.submit(wrapTask(task));
+	                this.currentPool.put(taskId, new SubmittedTask(task, future));
+				} catch (Exception e) {
+					log.error(String.format("Exception dispatching Job %d Task %d on node %s \n", job.getId(), task.getTaskId(), hz.getName()));
+				}
 			}
+		} finally {
+			lock.writeLock().unlock();
 		}
-	}
-
-	@Override
-	public long[][] getStatusList() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public long[][] getStatusList(String layerName) {
-		// TODO Auto-generated method stub
-		return null;
 	}
 
 	@Override
@@ -328,13 +328,18 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 	}
 	
 	boolean terminateLocalGWCTask(long id) {
-        SubmittedTask submittedTask = this.currentPool.remove(Long.valueOf(id));
-        if (submittedTask == null) {
-            return false;
-        }
-        submittedTask.task.terminateNicely();
-        // submittedTask.future.cancel(true);
-        return true;
+		lock.writeLock().lock();
+		try {
+	        SubmittedTask submittedTask = this.currentPool.remove(Long.valueOf(id));
+	        if (submittedTask == null) {
+	            return false;
+	        }
+	        submittedTask.task.terminateNicely();
+	        // submittedTask.future.cancel(true);
+	        return true;
+		} finally {
+			lock.writeLock().unlock();
+		}
 	}
 
 	@Override
@@ -390,7 +395,6 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 		DistributedTileRangeIterator dTrIter = new DistributedTileRangeIterator(trIter, step);
 		DistributedSeedJob job = new DistributedSeedJob(id, this, tl, threadCount, dTrIter, filterUpdate);
 		log.trace(String.format("Seed Job %d created on node %s, adding to cluster.",job.getId(), hz.getName()));
-		jobCloud.add(job);
 		return job;
 	}
 	@Override
@@ -401,7 +405,6 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 		DistributedTileRangeIterator dTrIter = new DistributedTileRangeIterator(trIter, step);
 		DistributedTruncateJob job = new DistributedTruncateJob(id, this, tl, dTrIter, filterUpdate);
 		log.trace(String.format("Truncate Job %d created on node %s, adding to cluster.",job.getId(), hz.getName()));
-		jobCloud.add(job);
 		return job;
 	}
 
@@ -430,16 +433,29 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
     @Override
     protected void jobDone(Job job) {
         try{
-            super.jobDone(job);
-            DistributedJob tJob = (DistributedJob) job;
-            for(GWCTask task: tJob.getTasks()){
+            DistributedJob dJob = (DistributedJob) job;
+            
+            for(GWCTask task: dJob.getTasks()){
                 Assert.state(task.getState().isStopped(), "Job reported done has tasks that have not stopped.");
             }
-        } finally {
+            
+            //super.jobDone(job); // let the hazelcast listener take care of the details on each node
+            jobCloud.remove(job);
             // TODO, fire an event to let interested parties know a job has completed.
+        } finally {
             //drain();
         }
         
     }
+
+	@Override
+	public Job getJobByID(long id) throws JobNotFoundException {
+		lock.readLock().lock();
+		try {
+			return super.getJobByID(id);
+		} finally {
+			lock.readLock().unlock();
+		}
+	}
 
 }
