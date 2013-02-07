@@ -26,6 +26,7 @@ import org.geowebcache.seed.SeedJob;
 import org.geowebcache.seed.SeedRequest;
 import org.geowebcache.seed.SeedTask;
 import org.geowebcache.seed.SeederThreadPoolExecutor;
+import org.geowebcache.seed.StatusLog;
 import org.geowebcache.seed.TaskStatus;
 import org.geowebcache.seed.TileBreeder;
 import org.geowebcache.seed.TruncateJob;
@@ -111,7 +112,6 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
      */
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
-
     //private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     private static class SubmittedTask {
@@ -156,6 +156,8 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 			try {
 				log.info(String.format("Job %d removed from node %s\n",j.getId(), getNode()));
 				jobs.remove(j.getId());
+				
+				stoppedJobLog.add(j.getStatus(10*1000));
 			} finally {
 				lock.writeLock().unlock();
 			}			
@@ -245,7 +247,7 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 	public Collection<JobStatus> getJobStatusList() {
 		Collection<JobStatus> statusList = new LinkedList<JobStatus>();
 		for(Job job: jobs.values()){
-			statusList.add(job.getStatus());
+			statusList.add(job.getStatus(500));
 		}
 		return statusList;
 	}
@@ -255,7 +257,7 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 		Collection<JobStatus> statusList = new LinkedList<JobStatus>();
 		for(Job job: jobs.values()){
 			if (job.getLayer().getName()==layerName){
-				statusList.add(job.getStatus());
+				statusList.add(job.getStatus(500));
 			}
 		}
 		return statusList;
@@ -439,6 +441,7 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
                 Assert.state(task.getState().isStopped(), "Job reported done has tasks that have not stopped.");
             }
             
+            job.getStatus(); // Update the status
             //super.jobDone(job); // let the hazelcast listener take care of the details on each node
             jobCloud.remove(job);
             // TODO, fire an event to let interested parties know a job has completed.

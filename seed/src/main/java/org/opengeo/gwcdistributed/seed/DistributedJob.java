@@ -26,6 +26,7 @@ import org.geowebcache.storage.TileRange;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.hazelcast.core.AtomicNumber;
+import com.hazelcast.core.Member;
 import com.hazelcast.core.MultiTask;
 import com.hazelcast.spring.context.SpringAware;
 
@@ -39,6 +40,7 @@ public abstract class DistributedJob implements Job, Serializable {
 	 */
 	private static final long serialVersionUID = 3754166281969849027L;
 	
+	private final Member originatingNode;
 	
 	final private AtomicNumber activeThreads;
     final protected int threadCount;
@@ -56,6 +58,7 @@ public abstract class DistributedJob implements Job, Serializable {
     transient protected GWCTask[] threads;
     transient protected DistributedTileBreeder breeder;
 
+    transient JobStatus cachedStatus;
     
     public static Log log = LogFactory.getLog(DistributedJob.class);
 
@@ -86,6 +89,8 @@ public abstract class DistributedJob implements Job, Serializable {
         this.doFilterUpdate = doFilterUpdate;
         com.hazelcast.core.HazelcastInstance hz = breeder.getHz();
         this.activeThreads = hz.getAtomicNumber(getKey("activeThreadCount"));
+        
+        this.originatingNode=hz.getCluster().getLocalMember();
         
         createTasks();
     }
@@ -294,20 +299,31 @@ public abstract class DistributedJob implements Job, Serializable {
 
     public JobStatus getStatus() {
     	checkInitialized();
-        Collection<TaskStatus> taskStatuses;
-		try {
-			taskStatuses = this.getTaskStatus();
-		} catch (Exception e) {
-			// TODO should handle this better, maybe allow getStatus() to throw GeoWebCacheException
-			log.error("Could not retreive state of tasks in job "+this.id+"", e);
-			return null;
-		} 
-		return new JobStatus(this);
+    	this.cachedStatus = new JobStatus(this);
+    	MultiTask<Object> mtask = breeder.executeCallable(new JobStatusUpdate(this, cachedStatus));
+    	try {
+			mtask.get();
+		} catch (ExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return cachedStatus;
+    }
+    
+    public JobStatus getStatus(long maxAge) {
+    	if(cachedStatus==null || cachedStatus.getTime()+maxAge < System.currentTimeMillis()){
+    		return getStatus();
+    	} else {
+    		return cachedStatus;
+    	}
     }
 
     class StateIterator implements Iterator<GWCTask.STATE> {
     	
-    	Iterator<TaskStatus> it = getStatus().getTaskStatuses().iterator();
+    	Iterator<TaskStatus> it = getTaskStatus().iterator();
     	
 		public boolean hasNext() {
 			return it.hasNext();
@@ -325,6 +341,14 @@ public abstract class DistributedJob implements Job, Serializable {
     
 	public STATE getState() {
 		return JobUtils.combineState(new StateIterator());
+	}
+	
+	/**
+	 * The node from which this job originated.
+	 * @return
+	 */
+	public Member getOriginatingNode(){
+		return originatingNode;
 	}
 	
 	/**
@@ -395,7 +419,7 @@ public abstract class DistributedJob implements Job, Serializable {
         while(true){
             wait();
             if(getState().isStopped()){
-                return getStatus();
+                return getStatus(10000);
             }
         }
 	}
