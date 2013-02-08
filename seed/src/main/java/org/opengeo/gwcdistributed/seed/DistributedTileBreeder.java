@@ -42,7 +42,10 @@ import org.springframework.context.ApplicationContextAware;
 import org.springframework.util.Assert;
 
 import com.hazelcast.core.AtomicNumber;
+import com.hazelcast.core.EntryEvent;
+import com.hazelcast.core.EntryListener;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.IMap;
 import com.hazelcast.core.ISet;
 import com.hazelcast.core.IdGenerator;
 import com.hazelcast.core.ItemEvent;
@@ -58,7 +61,7 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 	public Job createJob(TileRange tr, TileLayer tl, TYPE type,
 			int threadCount, boolean filterUpdate) throws GeoWebCacheException {
 		Job j = super.createJob(tr, tl, type, threadCount, filterUpdate);
-		jobCloud.add((DistributedJob) j); // The listener will take care of adding this to the local job list.
+		jobCloud.put(j.getId(),(DistributedJob) j); // The listener will take care of adding this to the local job list.
 		return j;
 	}
 	
@@ -67,11 +70,11 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 		this.hz = hz;
 		this.currentTaskId = hz.getIdGenerator("taskIdGenerator");
 		this.currentJobId = hz.getIdGenerator("jobIdGenerator");
-		this.jobCloud = hz.getSet("jobCloud");
-		jobCloud.addItemListener(new JobAddedListener(), true);
+		this.jobCloud = hz.getMap("jobCloud");
+		jobCloud.addEntryListener(new JobAddedListener(), true);
 	}
 	
-	private final ISet<DistributedJob> jobCloud;
+	private final IMap<Long,DistributedJob> jobCloud;
 
 	private final HazelcastInstance hz;
     private static final String GWC_SEED_ABORT_LIMIT = "GWC_SEED_ABORT_LIMIT";
@@ -128,11 +131,11 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
     /**
      * Callback for new jobs being added to the cluster
      */
-	private class JobAddedListener implements ItemListener<DistributedJob> {
+	private class JobAddedListener implements EntryListener<Long, DistributedJob> {
 
-		
-		public void itemAdded(ItemEvent<DistributedJob> item) {
-			DistributedJob j = item.getItem();
+		@Override
+		public void entryAdded(EntryEvent<Long, DistributedJob> item) {
+			DistributedJob j = item.getValue();
 			lock.writeLock().lock();
 			try {
 			log.info(String.format("Job %d added to cluster, adding to breeder on node %s\n",j.getId(), getNode()));
@@ -145,8 +148,9 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 			}
 		}
 
-		public void itemRemoved(ItemEvent<DistributedJob> item) {
-			DistributedJob j = item.getItem();
+		@Override
+		public void entryRemoved(EntryEvent<Long, DistributedJob> item) {
+			DistributedJob j = item.getValue();
 			
 			synchronized(j){
 				j.notifyAll();  // Wake up any threads waiting in Job#waitForStop
@@ -158,7 +162,19 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
 				jobs.remove(j.getId());
 			} finally {
 				lock.writeLock().unlock();
-			}			
+			}
+		}
+
+		@Override
+		public void entryUpdated(EntryEvent<Long, DistributedJob> event) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void entryEvicted(EntryEvent<Long, DistributedJob> event) {
+			// TODO Auto-generated method stub
+			
 		}
 		
 	}
@@ -428,7 +444,7 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
             }
 
             //super.jobDone(job); // let the hazelcast listener take care of the details on each node
-            jobCloud.remove(job);
+            jobCloud.remove(job.getId());
             // TODO, fire an event to let interested parties know a job has completed.
         } finally {
             //drain();

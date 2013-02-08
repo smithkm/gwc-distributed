@@ -1,6 +1,7 @@
 package org.opengeo.gwcdistributed.seed;
 
-import org.geowebcache.GeoWebCacheException;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.geowebcache.layer.TileLayer;
 import org.geowebcache.seed.GWCTask;
 import org.geowebcache.seed.GWCTask.TYPE;
@@ -13,6 +14,8 @@ public class DistributedTruncateJob extends DistributedJob implements TruncateJo
 	 */
 	private static final long serialVersionUID = -6904431211868719738L;
 
+    public static Log log = LogFactory.getLog(DistributedTruncateJob.class);
+
 	protected DistributedTruncateJob(long id, DistributedTileBreeder breeder,
 			TileLayer tl, DistributedTileRangeIterator tri,
 			boolean doFilterUpdate) {
@@ -24,7 +27,10 @@ public class DistributedTruncateJob extends DistributedJob implements TruncateJo
 	}
 
 	protected void createTasks(){
-        if(threads==null) threads = new GWCTask[0];
+        if(threads==null) {
+        	log.trace("Not the originating node, not creating truncate tasks.");
+        	threads = new GWCTask[0];
+        }
 	}
 	
 	@Override
