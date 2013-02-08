@@ -17,10 +17,14 @@ public class DistributedTruncateJob extends DistributedJob implements TruncateJo
 			TileLayer tl, DistributedTileRangeIterator tri,
 			boolean doFilterUpdate) {
 		super(id, breeder, tl, 1, tri, doFilterUpdate);
+		
+		// Only create a task on the originating node
+        threads = new GWCTask[1];
+        threads[0] = breeder.createTruncateTask(this);
 	}
 
 	protected void createTasks(){
-        threads = new GWCTask[1];
+        if(threads==null) threads = new GWCTask[0];
 	}
 	
 	@Override

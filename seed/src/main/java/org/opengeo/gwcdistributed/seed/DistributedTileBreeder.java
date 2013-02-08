@@ -206,18 +206,6 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
     }
 
 	@Override
-	public void seed(String layerName, SeedRequest sr)
-			throws GeoWebCacheException {
-
-        TileLayer tl = findTileLayer(layerName);
-
-        TileRange tr = createTileRange(sr, tl);
-
-        Job job = createJob(tr, tl, sr.getType(), sr.getThreadCount(),
-                sr.getFilterUpdate());
-	}
-
-	@Override
 	protected void dispatchJob(Job job) {
 		log.info(String.format("Dispatching Job %d to cluster.  Originating with node %s;", job.getId(), hz.getName()));
 	}
@@ -438,7 +426,7 @@ public class DistributedTileBreeder extends TileBreeder implements ApplicationCo
             for(GWCTask task: dJob.getTasks()){
                 Assert.state(task.getState().isStopped(), "Job reported done has tasks that have not stopped.");
             }
-            
+
             //super.jobDone(job); // let the hazelcast listener take care of the details on each node
             jobCloud.remove(job);
             // TODO, fire an event to let interested parties know a job has completed.

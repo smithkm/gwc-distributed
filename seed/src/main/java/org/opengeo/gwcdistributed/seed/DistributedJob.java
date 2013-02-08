@@ -307,7 +307,7 @@ public abstract class DistributedJob implements Job, Serializable {
 
     class StateIterator implements Iterator<GWCTask.STATE> {
     	
-    	Iterator<TaskStatus> it = getStatus().getTaskStatuses().iterator();
+    	Iterator<TaskStatus> it = getTaskStatus().iterator();
     	
 		public boolean hasNext() {
 			return it.hasNext();
